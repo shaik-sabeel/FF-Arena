@@ -20,9 +20,13 @@ const Profile = () => {
         const res = await API.get('/tournament');
         
         // Filter tournaments where current user is in playersJoined
-        const joined = res.data.filter((t) => 
-          t.playersJoined?.some((p) => p._id === user.id || p === user.id)
-        );
+        const joined = res.data.filter((t) => {
+          const userId = user.id || user._id;
+          return t.playersJoined?.some((p) => {
+            const pId = p._id || p;
+            return pId.toString() === userId?.toString();
+          });
+        });
         setMyMatches(joined);
       } catch (err) {
         console.error('Failed to load user tournaments', err);

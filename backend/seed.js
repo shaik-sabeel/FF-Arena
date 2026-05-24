@@ -84,7 +84,13 @@ const seedDatabase = async () => {
       slots: 8,
       playersJoined: [player1._id],
       matchDateTime: tomorrow,
-      host: hostUser._id
+      host: hostUser._id,
+      prizeDistribution: {
+        winnerCount: 1,
+        firstPlacePrize: 400,
+        secondPlacePrize: 0,
+        thirdPlacePrize: 0
+      }
     });
 
     const tournament2 = new Tournament({
@@ -97,7 +103,13 @@ const seedDatabase = async () => {
       slots: 48,
       playersJoined: [player1._id, player2._id],
       matchDateTime: dayAfter,
-      host: hostUser._id
+      host: hostUser._id,
+      prizeDistribution: {
+        winnerCount: 3,
+        firstPlacePrize: 800,
+        secondPlacePrize: 500,
+        thirdPlacePrize: 200
+      }
     });
 
     const tournament3 = new Tournament({
@@ -110,7 +122,13 @@ const seedDatabase = async () => {
       slots: 20,
       playersJoined: [player2._id],
       matchDateTime: tomorrow,
-      host: hostUser._id
+      host: hostUser._id,
+      prizeDistribution: {
+        winnerCount: 1,
+        firstPlacePrize: 150,
+        secondPlacePrize: 0,
+        thirdPlacePrize: 0
+      }
     });
 
     await tournament1.save();

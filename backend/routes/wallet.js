@@ -84,17 +84,122 @@ router.post('/withdraw', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Insufficient wallet balance for withdrawal' });
     }
 
-    // Deduct and save balance
+    // Deduct and save balance temporarily
     user.walletBalance -= numericAmount;
     await user.save();
+
+    let payoutId = `mock_payout_${Date.now()}`;
+    let payoutStatus = 'completed';
+    let description = `Withdrawn to UPI: ${payoutDetails}`;
+
+    // If RazorpayX is configured, perform real payout
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAYX_ACCOUNT_NUMBER) {
+      try {
+        const authHeader = 'Basic ' + Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+        
+        // 1. Create Contact
+        console.log('[Payout] Registering RazorpayX contact for user:', user.email);
+        const contactRes = await fetch('https://api.razorpay.com/v1/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            name: user.username,
+            email: user.email,
+            type: 'customer',
+            reference_id: user._id.toString()
+          })
+        });
+        
+        if (!contactRes.ok) {
+          const errText = await contactRes.text();
+          throw new Error(`RazorpayX Contact registration failed: ${errText}`);
+        }
+        
+        const contactData = await contactRes.json();
+        const contactId = contactData.id;
+        console.log('[Payout] Created RazorpayX contact:', contactId);
+        
+        // 2. Create Fund Account (UPI)
+        console.log('[Payout] Linking RazorpayX fund account (UPI) for contact:', contactId);
+        const fundRes = await fetch('https://api.razorpay.com/v1/fund_accounts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            contact_id: contactId,
+            account_type: 'vpa',
+            vpa: {
+              address: payoutDetails
+            }
+          })
+        });
+        
+        if (!fundRes.ok) {
+          const errText = await fundRes.text();
+          throw new Error(`RazorpayX Fund Account linking failed: ${errText}`);
+        }
+        
+        const fundData = await fundRes.json();
+        const fundAccountId = fundData.id;
+        console.log('[Payout] Linked fund account ID:', fundAccountId);
+        
+        // 3. Create Payout
+        console.log('[Payout] Initiating RazorpayX payout for amount (paise):', Math.round(numericAmount * 100));
+        const payoutRes = await fetch('https://api.razorpay.com/v1/payouts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER,
+            fund_account_id: fundAccountId,
+            amount: Math.round(numericAmount * 100), // convert to paise
+            currency: 'INR',
+            mode: 'UPI',
+            purpose: 'payout',
+            queue_if_low_balance: true,
+            narration: 'FF Arena Wallet Payout'
+          })
+        });
+        
+        if (!payoutRes.ok) {
+          const errText = await payoutRes.text();
+          throw new Error(`RazorpayX Payout execution failed: ${errText}`);
+        }
+        
+        const payoutData = await payoutRes.json();
+        payoutId = payoutData.id;
+        payoutStatus = payoutData.status; // e.g. processing, queued, processed
+        description = `Withdrawn to UPI: ${payoutDetails} (Ref: ${payoutId})`;
+        console.log('[Payout] Payout succeeded. Status:', payoutStatus, 'ID:', payoutId);
+        
+      } catch (payoutError) {
+        console.error('[Payout] Real-world RazorpayX payout transaction failed:', payoutError.message);
+        
+        // Rollback balance deduction
+        user.walletBalance += numericAmount;
+        await user.save();
+        
+        // Return clear error message to frontend
+        return res.status(400).json({ msg: `Transaction aborted: ${payoutError.message}` });
+      }
+    } else {
+      console.log('[Payout] RazorpayX credentials not fully configured. Performing mock transaction bypass.');
+    }
 
     // Log the transaction
     const transaction = new Transaction({
       user: req.user.id,
       type: 'withdraw',
       amount: numericAmount,
-      status: 'completed',
-      description: `Withdrawn to UPI: ${payoutDetails}`
+      status: payoutStatus === 'rejected' || payoutStatus === 'reversed' || payoutStatus === 'failed' ? 'failed' : 'completed',
+      description
     });
     await transaction.save();
 

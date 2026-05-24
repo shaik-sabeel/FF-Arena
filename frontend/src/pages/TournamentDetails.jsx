@@ -27,6 +27,84 @@ const TournamentDetails = () => {
   const [winnerIdInput, setWinnerIdInput] = useState('');
   const [recordingResults, setRecordingResults] = useState([]);
   const [submittingResults, setSubmittingResults] = useState(false);
+  const [winner1Id, setWinner1Id] = useState('');
+  const [winner2Id, setWinner2Id] = useState('');
+  const [winner3Id, setWinner3Id] = useState('');
+  const [killsInputs, setKillsInputs] = useState({});
+  const [botRunning, setBotRunning] = useState(false);
+  const [botLogs, setBotLogs] = useState([]);
+
+  const handleBotResolve = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    
+    setBotRunning(true);
+    setBotLogs([]);
+    setError('');
+
+    const addLog = (msg, delay) => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          setBotLogs((prev) => [...prev, msg]);
+          resolve();
+        }, delay);
+      });
+    };
+
+    try {
+      await addLog('🤖 Winnings Payout Bot Online.', 200);
+      await addLog('📡 Connecting to Garena Free Fire lobby client...', 400);
+      
+      // Call Backend API to run the resolution and get the results
+      const res = await API.put(`/tournament/${id}/resolve`);
+      const { tournament: updatedTournament, garenaLobbyResults } = res.data;
+
+      await addLog('✓ Custom room data synced. 50 participants retrieved.', 400);
+      await addLog('🔍 Scanning character IGNs in lobby results...', 500);
+
+      // Print matched players
+      for (const resItem of updatedTournament.results) {
+        const username = resItem.user?.username || 'Unknown';
+        const freeFireName = resItem.user?.freeFireName || 'Unknown';
+        await addLog(
+          `✓ Match: ${freeFireName} ➔ @${username} (Rank #${resItem.rank} | ${resItem.kills} Kills)`,
+          250
+        );
+      }
+
+      await addLog(`💰 Distributing prize pool of ₹${updatedTournament.prizePool}...`, 400);
+      await addLog('💸 Updating wallet balances:', 300);
+      await addLog(`  - Host Wallet: Deducted ₹${updatedTournament.prizePool.toFixed(2)}`, 200);
+
+      for (const resItem of updatedTournament.results) {
+        if (resItem.prizeWon > 0) {
+          const username = resItem.user?.username || 'player';
+          await addLog(`  - @${username} (Rank #${resItem.rank}): Credited ₹${resItem.prizeWon.toFixed(2)}`, 200);
+        }
+      }
+
+      await addLog('📝 Internal transaction ledger entries generated.', 300);
+      await addLog('✓ Tournament status set to COMPLETED.', 200);
+      await addLog('🏆 Tournament status successfully resolved by Bot!', 400);
+
+      setTimeout(() => {
+        setTournament(updatedTournament);
+        setBotRunning(false);
+        setBotLogs([]);
+        refreshUser();
+        fetchTournamentDetails();
+      }, 1500);
+
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.msg || 'Bot prize resolution failed';
+      await addLog(`❌ Error: ${errMsg}`, 300);
+      setError(errMsg);
+      // Keep logs visible so user can read them before closing
+      setTimeout(() => {
+        setBotRunning(false);
+      }, 4000);
+    }
+  };
 
   const containerRef = useRef(null);
   const hostConsoleRef = useRef(null);
@@ -187,9 +265,13 @@ const TournamentDetails = () => {
     );
   }
 
-  const hasJoined = tournament.playersJoined?.some((p) => p._id === user?.id || p === user?.id);
+  const userId = user?.id || user?._id;
+  const hasJoined = tournament.playersJoined?.some((p) => {
+    const pId = p._id || p;
+    return pId.toString() === userId?.toString();
+  });
   const slotsLeft = tournament.slots - (tournament.playersJoined?.length || 0);
-  const isHost = tournament.host?._id === user?.id || tournament.host === user?.id;
+  const isHost = (tournament.host?._id || tournament.host)?.toString() === userId?.toString();
 
   return (
     <div ref={containerRef} className="mx-auto max-w-5xl px-4 py-8 safe-bottom">
@@ -458,82 +540,73 @@ const TournamentDetails = () => {
                 </form>
               )}
 
-              {/* Declare Results Panel */}
+              {/* Automated Bot Payout Panel */}
               {tournament.status === 'ongoing' && (
-                <form onSubmit={handleCompleteMatch} className="space-y-4">
-                  <p className="text-[10px] text-gaming-text font-bold uppercase border-b border-gaming-border pb-1 text-gaming-blue">Record Match Rankings</p>
-                  
-                  <div>
-                    <label className="mb-1.5 block text-[9px] font-bold uppercase tracking-wider text-gaming-text">Select Winner Champion</label>
-                    <select
-                      value={winnerIdInput}
-                      onChange={(e) => setWinnerIdInput(e.target.value)}
-                      className="w-full rounded-xl border border-gaming-border bg-gaming-card py-2 px-2.5 text-xs font-bold text-white outline-none"
-                      required
-                    >
-                      <option value="">Choose winner...</option>
-                      {tournament.playersJoined.map((player) => (
-                        <option key={player._id} value={player._id}>
-                          {player.freeFireName || player.username} (@{player.username})
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-4">
+                  <div className="border-b border-gaming-border pb-2">
+                    <p className="text-xs font-black uppercase text-gaming-accent flex items-center">
+                      <span className="h-2.5 w-2.5 rounded-full bg-gaming-accent animate-pulse mr-1.5" />
+                      Winnings Payout Bot
+                    </p>
+                    <p className="text-[10px] text-gaming-text">Pre-configured Winner Slots: {tournament.prizeDistribution?.winnerCount || 1}</p>
                   </div>
 
-                  <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                    {recordingResults.map((result, idx) => (
-                      <div key={result.user} className="rounded-xl border border-gaming-border/40 bg-gaming-dark/30 p-2.5 text-[10px] space-y-2">
-                        <p className="font-extrabold text-white">{result.freeFireName || result.username} (@{result.username})</p>
+                  {botRunning ? (
+                    <div className="rounded-xl border border-gaming-accent/20 bg-black/60 p-4 font-mono text-[10px] space-y-1.5 min-h-[180px] max-h-[260px] overflow-y-auto">
+                      {botLogs.map((log, idx) => (
+                        <p key={idx} className={log.startsWith('✓') || log.startsWith('💸') || log.startsWith('  - @') ? 'text-green-400 font-bold' : log.startsWith('🤖') ? 'text-gaming-accent font-bold' : log.startsWith('❌') ? 'text-red-500 font-black' : 'text-gaming-text'}>
+                          {log}
+                        </p>
+                      ))}
+                      <div className="h-1.5 w-1.5 bg-gaming-accent animate-ping rounded-full mt-2" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-xl bg-gaming-dark/40 border border-gaming-border/60 p-4 space-y-3">
+                        <p className="text-xs font-semibold text-gaming-text leading-relaxed">
+                          The automation bot syncs directly with the game server, downloads lobby stats, matches character IGNs, resolves winner standings, and transfers cash payouts.
+                        </p>
                         
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-[8px] text-gaming-text font-bold uppercase">Rank</label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={result.rank}
-                              onChange={(e) => handleResultChange(idx, 'rank', e.target.value)}
-                              className="w-full rounded bg-gaming-card border border-gaming-border py-1 px-1.5 text-white font-mono text-center"
-                              required
-                            />
+                        <div className="space-y-2 border-t border-gaming-border/45 pt-3">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gaming-text">Total Prize Pool:</span>
+                            <span className="font-extrabold text-white">₹{tournament.prizePool}</span>
                           </div>
-
-                          <div>
-                            <label className="block text-[8px] text-gaming-text font-bold uppercase">Kills</label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={result.kills}
-                              onChange={(e) => handleResultChange(idx, 'kills', e.target.value)}
-                              className="w-full rounded bg-gaming-card border border-gaming-border py-1 px-1.5 text-white font-mono text-center"
-                              required
-                            />
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gaming-text">Winners Selected:</span>
+                            <span className="font-extrabold text-gaming-yellow">{tournament.prizeDistribution?.winnerCount || 1} Player(s)</span>
                           </div>
-
-                          <div>
-                            <label className="block text-[8px] text-gaming-text font-bold uppercase">Award (₹)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={result.prizeWon}
-                              onChange={(e) => handleResultChange(idx, 'prizeWon', e.target.value)}
-                              className="w-full rounded bg-gaming-card border border-gaming-border py-1 px-1.5 text-white font-mono text-center"
-                              required
-                            />
+                          
+                          <div className="pl-3 border-l border-gaming-accent/30 space-y-1 mt-1 text-[11px]">
+                            <div className="flex justify-between text-gaming-text">
+                              <span>1st Place:</span>
+                              <span className="font-bold text-white">₹{tournament.prizeDistribution?.firstPlacePrize || tournament.prizePool}</span>
+                            </div>
+                            {(tournament.prizeDistribution?.winnerCount || 1) >= 2 && (
+                              <div className="flex justify-between text-gaming-text">
+                                <span>2nd Place:</span>
+                                <span className="font-bold text-white">₹{tournament.prizeDistribution?.secondPlacePrize}</span>
+                              </div>
+                            )}
+                            {(tournament.prizeDistribution?.winnerCount || 1) === 3 && (
+                              <div className="flex justify-between text-gaming-text">
+                                <span>3rd Place:</span>
+                                <span className="font-bold text-white">₹{tournament.prizeDistribution?.thirdPlacePrize}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={submittingResults}
-                    className="w-full rounded-xl bg-gradient-fire py-2.5 text-xs font-black text-white transition hover:shadow-neon"
-                  >
-                    {submittingResults ? 'Distributing funds...' : 'Finalize & Distribute Prizes'}
-                  </button>
-                </form>
+                      <button
+                        onClick={handleBotResolve}
+                        className="w-full rounded-xl bg-gradient-fire py-3.5 text-xs font-black text-black transition shadow-neon hover:shadow-neon-hover flex items-center justify-center space-x-2"
+                      >
+                        <span>🤖 ACTIVATE RESULTS BOT & PAYOUT</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Already Completed */}

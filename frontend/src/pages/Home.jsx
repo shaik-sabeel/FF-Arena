@@ -35,8 +35,25 @@ const Home = () => {
     entryFee: '0',
     prizePool: '100',
     slots: '48',
-    matchDateTime: ''
+    matchDateTime: '',
+    winnerCount: '1',
+    firstPlacePrize: '100',
+    secondPlacePrize: '0',
+    thirdPlacePrize: '0'
   });
+
+  // Automatically calculate total prize pool from prize allocations
+  useEffect(() => {
+    const first = Number(formData.firstPlacePrize || 0);
+    const second = Number(formData.winnerCount) >= 2 ? Number(formData.secondPlacePrize || 0) : 0;
+    const third = Number(formData.winnerCount) === 3 ? Number(formData.thirdPlacePrize || 0) : 0;
+    const total = first + second + third;
+    
+    setFormData((prev) => ({
+      ...prev,
+      prizePool: total.toString()
+    }));
+  }, [formData.winnerCount, formData.firstPlacePrize, formData.secondPlacePrize, formData.thirdPlacePrize]);
 
   const cardsContainerRef = useRef(null);
   const heroRef = useRef(null);
@@ -141,7 +158,24 @@ const Home = () => {
 
     setSubmittingHost(true);
     try {
-      await API.post('/tournament/create', formData);
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        gameMode: formData.gameMode,
+        map: formData.map,
+        entryFee: Number(formData.entryFee),
+        prizePool: Number(formData.prizePool),
+        slots: Number(formData.slots),
+        matchDateTime: formData.matchDateTime,
+        prizeDistribution: {
+          winnerCount: Number(formData.winnerCount),
+          firstPlacePrize: Number(formData.firstPlacePrize || 0),
+          secondPlacePrize: Number(formData.winnerCount) >= 2 ? Number(formData.secondPlacePrize || 0) : 0,
+          thirdPlacePrize: Number(formData.winnerCount) === 3 ? Number(formData.thirdPlacePrize || 0) : 0
+        }
+      };
+
+      await API.post('/tournament/create', payload);
       setHostSuccess('Tournament created successfully!');
       setFormData({
         title: '',
@@ -151,7 +185,11 @@ const Home = () => {
         entryFee: '0',
         prizePool: '100',
         slots: '48',
-        matchDateTime: ''
+        matchDateTime: '',
+        winnerCount: '1',
+        firstPlacePrize: '100',
+        secondPlacePrize: '0',
+        thirdPlacePrize: '0'
       });
       setTimeout(() => {
         setShowHostForm(false);
@@ -422,18 +460,85 @@ const Home = () => {
               </div>
 
               <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text">
+                  Winner Slots to Reward
+                </label>
+                <select
+                  name="winnerCount"
+                  value={formData.winnerCount}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-card py-2.5 px-3 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                >
+                  <option value="1">1 Player</option>
+                  <option value="2">2 Players</option>
+                  <option value="3">3 Players</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
                   <Award size={13} className="mr-1 text-gaming-accent" />
-                  Prize Pool (₹)
+                  1st Place Prize (₹)
+                </label>
+                <input
+                  type="number"
+                  name="firstPlacePrize"
+                  min="5"
+                  value={formData.firstPlacePrize}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                  required
+                />
+              </div>
+
+              {Number(formData.winnerCount) >= 2 && (
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
+                    <Award size={13} className="mr-1 text-gaming-blue" />
+                    2nd Place Prize (₹)
+                  </label>
+                  <input
+                    type="number"
+                    name="secondPlacePrize"
+                    min="0"
+                    value={formData.secondPlacePrize}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-blue"
+                    required
+                  />
+                </div>
+              )}
+
+              {Number(formData.winnerCount) === 3 && (
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
+                    <Award size={13} className="mr-1 text-gaming-yellow" />
+                    3rd Place Prize (₹)
+                  </label>
+                  <input
+                    type="number"
+                    name="thirdPlacePrize"
+                    min="0"
+                    value={formData.thirdPlacePrize}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-yellow"
+                    required
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
+                  <Coins size={13} className="mr-1 text-gaming-accent" />
+                  Total Prize Pool (₹)
                 </label>
                 <input
                   type="number"
                   name="prizePool"
-                  min="10"
                   value={formData.prizePool}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
-                  required
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/40 py-2.5 px-3.5 text-sm font-medium text-gaming-text outline-none cursor-not-allowed"
+                  readOnly
+                  disabled
                 />
               </div>
 

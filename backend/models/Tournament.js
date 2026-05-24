@@ -33,6 +33,25 @@ const TournamentSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  prizeDistribution: {
+    winnerCount: {
+      type: Number,
+      default: 1,
+      enum: [1, 2, 3]
+    },
+    firstPlacePrize: {
+      type: Number,
+      default: 0
+    },
+    secondPlacePrize: {
+      type: Number,
+      default: 0
+    },
+    thirdPlacePrize: {
+      type: Number,
+      default: 0
+    }
+  },
   slots: {
     type: Number,
     required: true,
