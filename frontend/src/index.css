@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --color-gaming-dark: #08090c;
+  --color-gaming-card: #0f111a;
+  --color-gaming-border: #1e2235;
+  --color-gaming-accent: #ff5722;
+  --color-gaming-orange: #ff5722;
+  --color-gaming-yellow: #ffb300;
+  --color-gaming-gold: #ffd700;
+  --color-gaming-blue: #00e5ff;
+  --color-gaming-text: #a0a5b5;
+  --color-gaming-light: #f5f6f8;
+
+  --font-gaming: 'Outfit', sans-serif;
+
+  --shadow-neon: 0 0 12px rgba(255, 87, 34, 0.4);
+  --shadow-neon-hover: 0 0 20px rgba(255, 87, 34, 0.7);
+  --shadow-neon-gold: 0 0 15px rgba(255, 179, 0, 0.4);
+  --shadow-neon-blue: 0 0 15px rgba(0, 229, 255, 0.4);
+  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+
+  --background-image-gradient-gaming: linear-gradient(135deg, #0f111a 0%, #08090c 100%);
+  --background-image-gradient-fire: linear-gradient(135deg, #ff8a00 0%, #da1b60 100%);
+  --background-image-gradient-dark: linear-gradient(180deg, #131722 0%, #08090c 100%);
+  --background-image-gradient-gold: linear-gradient(135deg, #ffb300 0%, #ff8f00 100%);
+  --background-image-gradient-neon: linear-gradient(90deg, #ff5722 0%, #00e5ff 100%);
+}
+
+@layer base {
+  body {
+    @apply bg-gaming-dark text-white font-gaming antialiased selection:bg-gaming-accent selection:text-white overflow-x-hidden;
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(255, 87, 34, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0, 229, 255, 0.04) 0%, transparent 40%);
+  }
+}
+
+/* Custom Utilities for Premium Look */
+.glass-panel {
+  background: rgba(15, 17, 26, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.glass-panel-accent {
+  background: rgba(255, 87, 34, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 87, 34, 0.15);
+}
+
+.glow-text-orange {
+  text-shadow: 0 0 10px rgba(255, 87, 34, 0.5);
+}
+
+.glow-text-blue {
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #08090c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2235;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff5722;
+}
+
+/* Animated Neon Borders */
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(255, 87, 34, 0.3); }
+  50% { border-color: rgba(0, 229, 255, 0.6); }
+}
+
+.animate-glow-border {
+  animation: border-glow 4s infinite;
+}
+
+/* GSAP Reveal Helper */
+.gsap-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.gsap-reveal-x {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* Prevent bottom navigation bar from overlapping content on mobile */
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 70px);
+}
