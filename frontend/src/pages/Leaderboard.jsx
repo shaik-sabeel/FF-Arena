@@ -125,8 +125,8 @@ const Leaderboard = () => {
             {/* Rank 1 - Golden Champion */}
             {top1 && (
               <div className="glass-panel group relative z-10 flex w-full flex-col items-center rounded-3xl border border-gaming-yellow/20 bg-gaming-card/80 p-6 text-center shadow-neon sm:-translate-y-4 sm:w-1/3">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-gaming-yellow animate-bounce">
-                  <Crown size={28} className="drop-shadow-[0_0_8px_rgba(255,179,0,0.6)]" />
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-gaming-accent animate-bounce">
+                  <Crown size={28} className="drop-shadow-[0_0_8px_rgba(53,213,250,0.6)]" />
                 </div>
                 <div className="absolute top-0 left-1/2 h-1 w-20 -translate-x-1/2 bg-gaming-yellow group-hover:w-28 transition-all" />
                 <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gaming-yellow/10 text-gaming-yellow font-black border border-gaming-yellow/30 text-lg">

@@ -1,9 +1,11 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, AuthProvider } from './context/AuthContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
+import IntroScreen from './components/IntroScreen';
+import Footer from './components/Footer';
 
 // Pages
 import Home from './pages/Home';
@@ -40,6 +42,7 @@ const ProtectedRoute = ({ children }) => {
 // Main Layout Wrapper
 const AppLayout = () => {
   const { user, loading } = useContext(AuthContext);
+  const [introActive, setIntroActive] = useState(true);
 
   if (loading) {
     return (
@@ -50,6 +53,11 @@ const AppLayout = () => {
         </p>
       </div>
     );
+  }
+
+  // Renders Intro Screen first on site visit
+  if (introActive) {
+    return <IntroScreen onComplete={() => setIntroActive(false)} />;
   }
 
   return (
@@ -113,6 +121,9 @@ const AppLayout = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* Main Footer */}
+      <Footer />
 
       {/* Mobile Sticky Navigation Dock */}
       <BottomNav />

@@ -7,7 +7,6 @@ import gsap from 'gsap';
 // Helper to inject Razorpay checkout script
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
-    // Check if already loaded
     if (window.Razorpay) {
       resolve(true);
       return;
@@ -35,7 +34,6 @@ const WalletPage = () => {
   
   // Razorpay / Payment states
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('RAZORPAY'); // RAZORPAY / SANDBOX
   const [showSandboxLoader, setShowSandboxLoader] = useState(false);
   
   // Visual feedbacks
@@ -103,8 +101,8 @@ const WalletPage = () => {
     setSuccessMsg('');
 
     const parsedAmount = Number(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setErrorMsg('Please specify a valid deposit amount');
+    if (isNaN(parsedAmount) || parsedAmount < 10) {
+      setErrorMsg('Minimum deposit amount is ₹10');
       return;
     }
 
@@ -120,12 +118,11 @@ const WalletPage = () => {
 
       const { orderId, keyId, isSandbox } = orderRes.data;
 
-      // 2. If sandbox is active or Razorpay script failed, bypass via mock verification
+      // 2. Sandbox bypass verification
       if (isSandbox || !razorpayLoaded) {
-        console.log('[Payment] Keys not found, launching mock payment loader...');
+        console.log('[Payment] Razorpay keys missing. Simulating sandbox payment...');
         setShowSandboxLoader(true);
         
-        // Wait 1.5 seconds to simulate transaction delay
         setTimeout(async () => {
           try {
             const verifyRes = await API.post('/wallet/razorpay/verify', {
@@ -190,7 +187,7 @@ const WalletPage = () => {
             email: user.email
           },
           theme: {
-            color: '#ff5722'
+            color: '#35D5FA'
           },
           modal: {
             ondismiss: () => {
@@ -216,13 +213,7 @@ const WalletPage = () => {
     setSuccessMsg('');
 
     const parsedAmount = Number(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setErrorMsg('Please specify a valid withdrawal amount');
-      return;
-    }
-
-    // Enforce ₹150 withdrawal floor limit
-    if (parsedAmount < 150) {
+    if (isNaN(parsedAmount) || parsedAmount < 150) {
       setErrorMsg('Minimum withdrawal amount is ₹150');
       return;
     }
@@ -246,15 +237,12 @@ const WalletPage = () => {
 
     setProcessing(true);
     try {
-      // API Payout verification
       const res = await API.post('/wallet/withdraw', {
         amount: parsedAmount,
         payoutDetails: upiId
       });
 
-      // Sync wallet
       syncWalletBalance(res.data.walletBalance);
-
       setSuccessMsg(`Withdrawal of ₹${parsedAmount.toFixed(2)} processed to UPI ${upiId}!`);
       setAmount('');
       setUpiId('');
@@ -303,7 +291,7 @@ const WalletPage = () => {
                 setErrorMsg('');
                 setSuccessMsg('');
               }}
-              className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition"
+              className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-sm font-extrabold text-black shadow-neon hover:shadow-neon-hover transition"
             >
               <Plus size={18} />
               <span>Razorpay Deposit</span>
@@ -361,7 +349,8 @@ const WalletPage = () => {
                       <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Amount to Deposit (₹)</label>
                       <input
                         type="number"
-                        placeholder="e.g. 500"
+                        placeholder="Min 10"
+                        min="10"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2 px-3 text-sm font-medium text-white outline-none focus:border-gaming-accent"
@@ -371,13 +360,13 @@ const WalletPage = () => {
                     </div>
 
                     <div className="rounded-lg bg-gaming-dark/40 border border-gaming-border p-3 text-[10px] text-gaming-text leading-relaxed">
-                      Secured checkout via Razorpay payments. Funds are instantly credited to your wallet balance.
+                      Secured checkout via Razorpay. Minimum amount to deposit is ₹10.
                     </div>
 
                     <button
                       type="submit"
                       disabled={processing}
-                      className="w-full rounded-xl bg-gaming-accent py-2.5 text-xs font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
+                      className="w-full rounded-xl bg-gaming-accent py-2.5 text-xs font-extrabold text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
                     >
                       {processing ? 'Connecting Gateway...' : 'Pay with Razorpay'}
                     </button>
@@ -442,7 +431,7 @@ const WalletPage = () => {
                   <button
                     type="submit"
                     disabled={processing}
-                    className="w-full rounded-xl bg-gaming-blue py-2.5 text-xs font-extrabold text-gaming-dark transition shadow-neon-blue disabled:opacity-50"
+                    className="w-full rounded-xl bg-gaming-blue py-2.5 text-xs font-extrabold text-black transition shadow-neon-blue disabled:opacity-50"
                   >
                     {processing ? 'Processing Cashout...' : 'Simulate Payout'}
                   </button>

@@ -103,7 +103,7 @@ const Register = () => {
           <img
             src="/logo.svg"
             alt="Logo"
-            className="mx-auto mb-4 h-14 w-14 drop-shadow-[0_0_12px_rgba(255,87,34,0.6)]"
+            className="mx-auto mb-4 h-14 w-14 drop-shadow-[0_0_12px_rgba(53,213,250,0.6)]"
           />
           <h2 className="text-2xl font-black tracking-wide text-white font-gaming uppercase">
             Create Gamer Account

@@ -3,7 +3,7 @@ import API from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import TournamentCard from '../components/TournamentCard';
 import SparkParticles from '../components/SparkParticles';
-import { Gamepad2, Plus, Calendar, Coins, ShieldAlert, Users, Award, Map, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Gamepad2, Plus, Calendar, Coins, ShieldAlert, Users, Award, Map, RefreshCw } from 'lucide-react';
 import gsap from 'gsap';
 
 const Home = () => {
@@ -12,9 +12,14 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState('All');
   
-  // Carousel states
-  const [carouselIndex, setCarouselIndex] = useState(0);
-  
+  // 3D Photo Carousel states
+  const [slideIndex, setSlideIndex] = useState(0);
+  const slides = [
+    '/images/slide1.png',
+    '/images/slide2.png',
+    '/images/slide3.png'
+  ];
+
   // Host Form states
   const [showHostForm, setShowHostForm] = useState(false);
   const [hostError, setHostError] = useState('');
@@ -36,7 +41,7 @@ const Home = () => {
   const cardsContainerRef = useRef(null);
   const heroRef = useRef(null);
   const hostFormRef = useRef(null);
-  const carouselRef = useRef(null);
+  const carouselContainerRef = useRef(null);
 
   // Fetch Tournaments
   const fetchTournaments = async () => {
@@ -53,6 +58,14 @@ const Home = () => {
 
   useEffect(() => {
     fetchTournaments();
+  }, []);
+
+  // Auto-rotate 3D photo carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % slides.length);
+    }, 4000);
+    return () => clearInterval(timer);
   }, []);
 
   // GSAP hero animation
@@ -87,17 +100,6 @@ const Home = () => {
     }
   }, [showHostForm]);
 
-  // GSAP Carousel Slide Transition
-  useEffect(() => {
-    if (carouselRef.current) {
-      gsap.fromTo(
-        carouselRef.current,
-        { x: 30, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }
-      );
-    }
-  }, [carouselIndex]);
-
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setHostError('');
@@ -114,7 +116,7 @@ const Home = () => {
 
     // Role Enforcement check: Only host and admin can access
     if (user.role !== 'host' && user.role !== 'admin') {
-      setHostError('Access Denied: Only Hosts or Admins can create tournaments. Go to Settings to update your profile.');
+      setHostError('Access Denied: Only Hosts or Admins can create tournaments. Update your role to Host in Settings.');
       return;
     }
 
@@ -151,7 +153,6 @@ const Home = () => {
         slots: '48',
         matchDateTime: ''
       });
-      // Close form and refresh
       setTimeout(() => {
         setShowHostForm(false);
         setHostSuccess('');
@@ -170,45 +171,51 @@ const Home = () => {
     return t.gameMode === filterMode;
   });
 
-  // Featured Tournaments Carousel (take top 3 sorted by prizePool)
-  const featuredMatches = [...tournaments]
-    .sort((a, b) => b.prizePool - a.prizePool)
-    .slice(0, 3);
-
-  // Fallback featured data if database is fresh
-  const fallbackFeatured = [
-    { title: 'Bermuda Fire Cup League', gameMode: 'BR Ranked', prizePool: 1500, entryFee: 100, map: 'Bermuda' },
-    { title: 'Clash Squad Pro League', gameMode: 'Clash Squad', prizePool: 800, entryFee: 50, map: 'Purgatory' },
-    { title: 'Kalahari Solo Snipe Lobbies', gameMode: 'Solo Showdown', prizePool: 300, entryFee: 0, map: 'Kalahari' }
-  ];
-
-  const currentFeatured = featuredMatches.length > 0 ? featuredMatches : fallbackFeatured;
-
-  const handleNextFeatured = () => {
-    setCarouselIndex((prev) => (prev + 1) % currentFeatured.length);
-  };
-
-  const handlePrevFeatured = () => {
-    setCarouselIndex((prev) => (prev - 1 + currentFeatured.length) % currentFeatured.length);
+  // 3D Card transformation styling
+  const getCardStyle = (index) => {
+    const diff = (index - slideIndex + slides.length) % slides.length;
+    
+    if (diff === 0) {
+      // Primary card in front
+      return {
+        transform: 'translateX(0) scale(1) translateZ(0) rotateY(0deg)',
+        zIndex: 30,
+        opacity: 1,
+      };
+    } else if (diff === 1) {
+      // Offset card to the right/back
+      return {
+        transform: 'translateX(45px) scale(0.9) translateZ(-80px) rotateY(-12deg)',
+        zIndex: 20,
+        opacity: 0.75,
+      };
+    } else {
+      // Offset card to the left/back
+      return {
+        transform: 'translateX(-45px) scale(0.85) translateZ(-160px) rotateY(12deg)',
+        zIndex: 10,
+        opacity: 0.45,
+      };
+    }
   };
 
   return (
     <div className="relative min-h-[90vh] overflow-x-hidden">
-      {/* Canvas sparks background */}
+      {/* Background sparks particle canvas */}
       <SparkParticles />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 md:px-8 safe-bottom">
         
-        {/* Hero Header Area + Carousel */}
+        {/* Full-Page Hero Header Area */}
         <div
           ref={heroRef}
-          className="relative mb-10 overflow-hidden rounded-3xl border border-gaming-border bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gaming-accent/15 via-gaming-card to-gaming-dark p-6 md:p-10 shadow-card flex flex-col md:flex-row gap-8 items-center"
+          className="relative mb-8 overflow-hidden rounded-3xl border border-gaming-border bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gaming-accent/10 via-gaming-card to-gaming-dark p-6 md:p-12 shadow-card flex flex-col md:flex-row gap-10 items-center min-h-[calc(100vh-120px)] md:py-0 py-8"
         >
-          <div className="absolute top-0 right-0 h-64 w-64 -translate-y-12 translate-x-12 rounded-full bg-gaming-accent/10 blur-[80px]" />
+          <div className="absolute top-0 right-0 h-64 w-64 -translate-y-12 translate-x-12 rounded-full bg-gaming-accent/5 blur-[90px]" />
           
-          {/* Hero left text block */}
+          {/* Left Hero Text block */}
           <div className="flex-1 max-w-xl">
-            <div className="mb-4 inline-flex items-center space-x-2 rounded-full border border-gaming-accent/30 bg-gaming-accent/15 px-3 py-1 text-xs font-bold text-gaming-accent">
+            <div className="mb-4 inline-flex items-center space-x-2 rounded-full border border-gaming-accent/30 bg-gaming-accent/10 px-3 py-1 text-xs font-bold text-gaming-accent">
               <span className="h-2 w-2 rounded-full bg-gaming-accent animate-ping" />
               <span>LIVE COMPETITION ARENA</span>
             </div>
@@ -218,13 +225,13 @@ const Home = () => {
             </h1>
             
             <p className="mt-4 text-xs leading-relaxed text-gaming-text md:text-sm">
-              Participate in custom tournaments. Win matches, accumulate kills, and earn direct wallet deposits. Seamless cashouts are processed straight to your UPI address!
+              Participate in custom lobbies. Win matches, accumulate kills, and earn direct wallet deposits. Cashouts are processed straight to your UPI ID!
             </p>
 
             <div className="mt-6 flex flex-wrap gap-4">
               <button
                 onClick={handleHostClick}
-                className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3.5 text-xs font-extrabold text-white shadow-neon transition hover:bg-opacity-95 hover:shadow-neon-hover"
+                className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-xs font-extrabold text-black shadow-neon transition hover:bg-opacity-95 hover:shadow-neon-hover"
               >
                 <Plus size={16} />
                 <span>Host Tournament</span>
@@ -234,74 +241,91 @@ const Home = () => {
                   const element = document.getElementById('match-list');
                   element?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="rounded-xl border border-gaming-border bg-gaming-card/40 px-5 py-3.5 text-xs font-bold text-white transition hover:bg-gaming-border"
+                className="rounded-xl border border-gaming-border bg-gaming-card/45 px-5 py-3 text-xs font-bold text-white transition hover:bg-gaming-border"
               >
                 Browse Lobbies
               </button>
             </div>
+
+            {/* Integrated Stats counters (matching mock template) */}
+            <div className="mt-10 flex space-x-8 md:space-x-12 border-t border-gaming-border/40 pt-6">
+              <div>
+                <p className="text-xl font-black text-white md:text-2xl font-gaming leading-none">50K+</p>
+                <p className="mt-1 text-[9px] uppercase font-bold text-gaming-text tracking-wider">Players</p>
+              </div>
+              <div>
+                <p className="text-xl font-black text-white md:text-2xl font-gaming leading-none">1000+</p>
+                <p className="mt-1 text-[9px] uppercase font-bold text-gaming-text tracking-wider">Lobbies</p>
+              </div>
+              <div>
+                <p className="text-xl font-black text-white md:text-2xl font-gaming leading-none">₹50K+</p>
+                <p className="mt-1 text-[9px] uppercase font-bold text-gaming-text tracking-wider">Winnings Paid</p>
+              </div>
+            </div>
           </div>
 
-          {/* Hero Right Featured Carousel block */}
-          <div className="w-full md:w-80 flex-shrink-0">
-            <div className="glass-panel relative rounded-2xl border border-gaming-accent/25 p-5 shadow-neon">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gaming-accent">Featured Match</span>
-                
-                {/* Carousel Controls */}
-                <div className="flex space-x-1.5">
-                  <button
-                    onClick={handlePrevFeatured}
-                    className="flex h-5 w-5 items-center justify-center rounded bg-gaming-dark text-gaming-text hover:text-white transition"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <button
-                    onClick={handleNextFeatured}
-                    className="flex h-5 w-5 items-center justify-center rounded bg-gaming-dark text-gaming-text hover:text-white transition"
-                  >
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Slider Card element */}
-              <div ref={carouselRef} className="space-y-4">
-                <h3 className="text-sm font-extrabold text-white line-clamp-1">
-                  {currentFeatured[carouselIndex].title}
-                </h3>
-                
-                <div className="grid grid-cols-2 gap-2 text-left rounded-lg bg-gaming-dark/60 p-2.5">
-                  <div>
-                    <span className="text-[8px] uppercase tracking-wider text-gaming-text">Prize Pool</span>
-                    <p className="text-xs font-black text-gaming-yellow">₹{currentFeatured[carouselIndex].prizePool}</p>
-                  </div>
-                  <div>
-                    <span className="text-[8px] uppercase tracking-wider text-gaming-text">Entry Fee</span>
-                    <p className="text-xs font-black text-white">
-                      {currentFeatured[carouselIndex].entryFee === 0 ? 'FREE' : `₹${currentFeatured[carouselIndex].entryFee}`}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-gaming-text">
-                  <span className="bg-gaming-accent/15 px-2 py-0.5 rounded border border-gaming-accent/20 font-bold uppercase">
-                    {currentFeatured[carouselIndex].gameMode}
-                  </span>
-                  <span>Map: <strong>{currentFeatured[carouselIndex].map}</strong></span>
-                </div>
-              </div>
-
-              {/* Carousel Index indicators */}
-              <div className="mt-4 flex justify-center space-x-1.5">
-                {currentFeatured.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      carouselIndex === i ? 'w-4 bg-gaming-accent' : 'w-1.5 bg-gaming-border'
-                    }`}
+          {/* Right Hero: Scaled 3D Photo Carousel Stack */}
+          <div className="relative w-full h-[280px] sm:w-[320px] flex-shrink-0 flex items-center justify-center">
+            <div 
+              ref={carouselContainerRef} 
+              style={{ perspective: '800px', transformStyle: 'preserve-3d' }}
+              className="relative w-[300px] h-[400px]"
+            >
+              {slides.map((src, index) => (
+                <div
+                  key={index}
+                  style={getCardStyle(index)}
+                  className="absolute inset-0 rounded-2xl border border-gaming-accent/20 bg-gaming-card overflow-hidden shadow-neon transition-all duration-700 ease-out"
+                >
+                  <img
+                    src={src}
+                    alt={`Slide ${index + 1}`}
+                    className="w-full h-full object-cover select-none"
+                    draggable="false"
                   />
-                ))}
-              </div>
+                  {/* Glowing mask overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Infinite Game Modes scrolling ticker strip */}
+        <div className="w-full bg-black/80 border-y border-gaming-border/80 py-3.5 overflow-hidden select-none mb-10 rounded-xl">
+          <div className="animate-marquee whitespace-nowrap flex items-center gap-10">
+            {/* Loop Item Block 1 */}
+            <div className="flex items-center gap-10 text-xs font-black uppercase text-gaming-accent tracking-widest">
+              <span>Clash Squad</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Lone Wolf</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Custom Room</span>
+              <span className="text-white opacity-40">•</span>
+              <span>BR Ranked</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Team Deathmatch</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Battle Royale</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Speed Clash</span>
+            </div>
+            <span className="text-white opacity-40">•</span>
+            {/* Loop Item Block 2 (Duplicate for infinite seamless wrap) */}
+            <div className="flex items-center gap-10 text-xs font-black uppercase text-gaming-accent tracking-widest">
+              <span>Clash Squad</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Lone Wolf</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Custom Room</span>
+              <span className="text-white opacity-40">•</span>
+              <span>BR Ranked</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Team Deathmatch</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Battle Royale</span>
+              <span className="text-white opacity-40">•</span>
+              <span>Speed Clash</span>
             </div>
           </div>
         </div>
@@ -383,7 +407,7 @@ const Home = () => {
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-                  <Coins size={13} className="mr-1 text-gaming-yellow" />
+                  <Coins size={13} className="mr-1 text-gaming-accent" />
                   Entry Fee (₹)
                 </label>
                 <input
@@ -399,7 +423,7 @@ const Home = () => {
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-                  <Award size={13} className="mr-1 text-gaming-yellow" />
+                  <Award size={13} className="mr-1 text-gaming-accent" />
                   Prize Pool (₹)
                 </label>
                 <input
@@ -415,7 +439,7 @@ const Home = () => {
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-                  <Users size={13} className="mr-1 text-gaming-blue" />
+                  <Users size={13} className="mr-1 text-gaming-yellow" />
                   Max Slots
                 </label>
                 <input
@@ -449,7 +473,7 @@ const Home = () => {
                 <button
                   type="submit"
                   disabled={submittingHost}
-                  className="w-full rounded-xl bg-gradient-fire py-3 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
+                  className="w-full rounded-xl bg-gradient-fire py-3 text-sm font-extrabold text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
                 >
                   {submittingHost ? 'Publishing...' : 'Deploy Tournament'}
                 </button>
@@ -469,7 +493,7 @@ const Home = () => {
         {/* Main Tournament List Title and Filters */}
         <div id="match-list" className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold text-white uppercase tracking-wide flex items-center">
+            <h2 className="text-2xl font-extrabold text-white uppercase tracking-wide flex items-center font-gaming">
               <Gamepad2 size={24} className="mr-2 text-gaming-accent" />
               Lobby Directory
             </h2>
@@ -493,7 +517,7 @@ const Home = () => {
               onClick={() => setFilterMode(mode)}
               className={`rounded-xl px-4 py-2 text-xs font-bold uppercase transition duration-200 ${
                 filterMode === mode
-                  ? 'bg-gaming-accent text-white shadow-neon'
+                  ? 'bg-gaming-accent text-black shadow-neon'
                   : 'border border-gaming-border bg-gaming-card/40 text-gaming-text hover:bg-gaming-border hover:text-white'
               }`}
             >

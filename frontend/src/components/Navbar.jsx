@@ -17,7 +17,7 @@ const Navbar = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <img src="/logo.svg" alt="Arena Logo" className="h-9 w-9 drop-shadow-[0_0_8px_rgba(255,87,34,0.6)]" />
+          <img src="/logo.svg" alt="Arena Logo" className="h-9 w-9 drop-shadow-[0_0_8px_rgba(53,213,250,0.6)]" />
           <span className="bg-gradient-neon bg-clip-text text-xl font-extrabold tracking-wider text-transparent font-gaming">
             FF <span className="text-white">ARENA</span>
           </span>

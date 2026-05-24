@@ -20,8 +20,9 @@ const razorpayInstance = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY
 router.post('/deposit', auth, async (req, res) => {
   const { amount, paymentMethod } = req.body;
 
-  if (!amount || Number(amount) <= 0) {
-    return res.status(400).json({ msg: 'Please provide a valid deposit amount' });
+  const numericAmount = Number(amount);
+  if (!amount || isNaN(numericAmount) || numericAmount < 10) {
+    return res.status(400).json({ msg: 'Minimum deposit amount is ₹10' });
   }
 
   try {
@@ -30,13 +31,13 @@ router.post('/deposit', auth, async (req, res) => {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    user.walletBalance += Number(amount);
+    user.walletBalance += numericAmount;
     await user.save();
 
     const transaction = new Transaction({
       user: req.user.id,
       type: 'deposit',
-      amount: Number(amount),
+      amount: numericAmount,
       status: 'completed',
       description: `Deposited via ${paymentMethod || 'Mock Payment Gateway'}`
     });
@@ -83,9 +84,11 @@ router.post('/withdraw', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Insufficient wallet balance for withdrawal' });
     }
 
+    // Deduct and save balance
     user.walletBalance -= numericAmount;
     await user.save();
 
+    // Log the transaction
     const transaction = new Transaction({
       user: req.user.id,
       type: 'withdraw',
@@ -110,13 +113,15 @@ router.post('/withdraw', auth, async (req, res) => {
 // @access  Private
 router.post('/razorpay/order', auth, async (req, res) => {
   const { amount } = req.body;
-  if (!amount || Number(amount) <= 0) {
-    return res.status(400).json({ msg: 'Please provide a valid deposit amount' });
+  const numericAmount = Number(amount);
+  
+  if (!amount || isNaN(numericAmount) || numericAmount < 10) {
+    return res.status(400).json({ msg: 'Minimum deposit amount is ₹10' });
   }
 
   try {
     const options = {
-      amount: Math.round(Number(amount) * 100), // in paise (e.g. ₹100 = 10000 paise)
+      amount: Math.round(numericAmount * 100), // in paise (e.g. ₹10 = 1000 paise)
       currency: 'INR',
       receipt: `receipt_order_${Date.now()}`
     };
@@ -172,7 +177,7 @@ router.post('/razorpay/verify', auth, async (req, res) => {
       }
     } else {
       // Sandbox verify bypass
-      console.log('[Wallet] Razorpay Sandbox payment bypass verification');
+      console.log('[Wallet] Razorpay Sandbox payment verification bypass');
       if (razorpay_order_id.startsWith('order_mock_') || razorpay_payment_id.startsWith('pay_mock_')) {
         verified = true;
       }
