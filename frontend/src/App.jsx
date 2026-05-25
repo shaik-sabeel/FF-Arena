@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, AuthProvider } from './context/AuthContext';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import IntroScreen from './components/IntroScreen';
@@ -132,16 +132,12 @@ const AppLayout = () => {
 };
 
 function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-google-client-id.apps.googleusercontent.com';
-
   return (
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <AuthProvider>
-        <Router>
-          <AppLayout />
-        </Router>
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <AuthProvider>
+      <Router>
+        <AppLayout />
+      </Router>
+    </AuthProvider>
   );
 }
 

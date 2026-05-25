@@ -64,21 +64,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google Login action
-  const loginWithGoogle = async (credential) => {
-    try {
-      const res = await API.post('/auth/google', { credential });
-      localStorage.setItem('token', res.data.token);
-      setToken(res.data.token);
-      setUser(res.data.user);
-      return { success: true };
-    } catch (err) {
-      return {
-        success: false,
-        error: err.response?.data?.msg || 'Google login failed'
-      };
-    }
-  };
+
 
   // Logout action
   const logout = () => {
@@ -135,7 +121,6 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         register,
-        loginWithGoogle,
         logout,
         updateProfile,
         syncWalletBalance,

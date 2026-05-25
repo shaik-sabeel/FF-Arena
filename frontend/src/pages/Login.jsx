@@ -2,14 +2,14 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react';
-import { GoogleLogin } from '@react-oauth/google';
+
 import gsap from 'gsap';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loadingState, setLoadingState] = useState(false);
-  const { login, loginWithGoogle, user } = useContext(AuthContext);
+  const { login, user } = useContext(AuthContext);
   
   const navigate = useNavigate();
   const formRef = useRef(null);
@@ -53,32 +53,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse) => {
-    setLoadingState(true);
-    setError('');
-    const result = await loginWithGoogle(credentialResponse.credential);
-    setLoadingState(false);
 
-    if (result.success) {
-      navigate('/');
-    } else {
-      setError(result.error);
-    }
-  };
-
-  const handleSandboxGoogleLogin = async () => {
-    setLoadingState(true);
-    setError('');
-    const mockEmail = `google_sandbox_${Math.floor(Math.random() * 1000)}@gmail.com`;
-    const result = await loginWithGoogle(`mock_google_token_${mockEmail}`);
-    setLoadingState(false);
-
-    if (result.success) {
-      navigate('/');
-    } else {
-      setError(result.error);
-    }
-  };
 
   return (
     <div className="flex min-h-[85vh] items-center justify-center px-4 py-8">
@@ -162,35 +137,7 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="relative my-5 flex items-center justify-center">
-          <div className="absolute left-0 w-full border-t border-gaming-border"></div>
-          <span className="relative bg-gaming-card px-3.5 text-[10px] font-black uppercase tracking-wider text-gaming-text">
-            OR SIGN IN WITH
-          </span>
-        </div>
 
-        {/* Google OAuth Login Button */}
-        <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="w-full flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Google Sign-In failed')}
-              theme="filled_dark"
-              shape="rectangular"
-              width="384px"
-            />
-          </div>
-
-          {/* Sandbox Bypass Helper */}
-          <button
-            type="button"
-            onClick={handleSandboxGoogleLogin}
-            className="w-full rounded-xl border border-gaming-border/80 bg-gaming-dark/40 py-2.5 text-xs font-bold text-gaming-text transition hover:bg-gaming-border hover:text-white"
-          >
-            Sandbox Google Authentication
-          </button>
-        </div>
 
         {/* Footer Link */}
         <div className="mt-8 text-center text-xs font-semibold text-gaming-text">
