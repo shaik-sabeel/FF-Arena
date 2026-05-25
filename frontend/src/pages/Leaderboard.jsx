@@ -10,30 +10,17 @@ const Leaderboard = () => {
   const podiumRef = useRef(null);
   const listRef = useRef(null);
 
-  // Fallback demo rankings if DB is empty
-  const fallbackPlayers = [
-    { username: 'FF_Titan', freeFireName: '꧁T1T4N꧂', stats: { earnings: 2500, kills: 142, matchesWon: 28 } },
-    { username: 'GamerGod', freeFireName: 'GOD_Viper', stats: { earnings: 1800, kills: 98, matchesWon: 19 } },
-    { username: 'SlayerPro', freeFireName: 'Slayer××', stats: { earnings: 1200, kills: 84, matchesWon: 14 } },
-    { username: 'BermudaKing', freeFireName: 'KingBermuda', stats: { earnings: 850, kills: 62, matchesWon: 9 } },
-    { username: 'SquadWipe', freeFireName: 'WiperSquad', stats: { earnings: 600, kills: 55, matchesWon: 6 } },
-    { username: 'HeadshotMax', freeFireName: 'HS_Max', stats: { earnings: 450, kills: 48, matchesWon: 4 } },
-    { username: 'DangerZone', freeFireName: 'DangerZone', stats: { earnings: 200, kills: 23, matchesWon: 2 } }
-  ];
-
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true);
         const res = await API.get('/user/leaderboard');
-        if (res.data && res.data.length > 0) {
+        if (res.data) {
           setPlayers(res.data);
-        } else {
-          setPlayers(fallbackPlayers);
         }
       } catch (err) {
         console.error('Failed to load leaderboard', err);
-        setPlayers(fallbackPlayers);
+        setPlayers([]);
       } finally {
         setLoading(false);
       }
@@ -92,6 +79,10 @@ const Leaderboard = () => {
         <div className="flex h-64 flex-col items-center justify-center">
           <span className="h-10 w-10 animate-spin rounded-full border-4 border-gaming-accent border-t-transparent" />
         </div>
+      ) : players.length === 0 ? (
+        <div className="glass-panel rounded-2xl border border-gaming-border p-8 text-center text-xs font-semibold text-gaming-text">
+          No matches resolved yet. Once players earn winnings, the scoreboard will rank them here!
+        </div>
       ) : (
         <>
           {/* Podium for top 3 */}
@@ -104,7 +95,7 @@ const Leaderboard = () => {
               <div className="glass-panel group relative flex w-full flex-col items-center rounded-2xl border border-gaming-border/80 bg-gaming-card/40 p-5 text-center shadow-card transition duration-300 hover:border-gaming-text/30 sm:w-1/3">
                 <div className="absolute top-0 left-1/2 h-1 w-16 -translate-x-1/2 bg-slate-400 opacity-60 group-hover:w-24 transition-all" />
                 <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-400/10 text-slate-400 font-bold border border-slate-400/20">
-                  2
+                   2
                 </div>
                 <h3 className="text-sm font-extrabold text-white truncate max-w-full">
                   {top2.freeFireName || top2.username}
@@ -130,7 +121,7 @@ const Leaderboard = () => {
                 </div>
                 <div className="absolute top-0 left-1/2 h-1 w-20 -translate-x-1/2 bg-gaming-yellow group-hover:w-28 transition-all" />
                 <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gaming-yellow/10 text-gaming-yellow font-black border border-gaming-yellow/30 text-lg">
-                  1
+                   1
                 </div>
                 <h3 className="text-base font-black text-white truncate max-w-full">
                   {top1.freeFireName || top1.username}
@@ -153,7 +144,7 @@ const Leaderboard = () => {
               <div className="glass-panel group relative flex w-full flex-col items-center rounded-2xl border border-gaming-border/80 bg-gaming-card/40 p-5 text-center shadow-card transition duration-300 hover:border-amber-700/30 sm:w-1/3">
                 <div className="absolute top-0 left-1/2 h-1 w-16 -translate-x-1/2 bg-amber-700 opacity-60 group-hover:w-24 transition-all" />
                 <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-700/10 text-amber-600 font-bold border border-amber-700/20">
-                  3
+                   3
                 </div>
                 <h3 className="text-sm font-extrabold text-white truncate max-w-full">
                   {top3.freeFireName || top3.username}

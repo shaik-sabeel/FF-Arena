@@ -218,7 +218,7 @@ const WalletPage = () => {
       return;
     }
 
-    if (user.walletBalance < parsedAmount) {
+    if (!user || user.walletBalance < parsedAmount) {
       setErrorMsg('Insufficient wallet balance for withdrawal');
       return;
     }
@@ -288,6 +288,7 @@ const WalletPage = () => {
               onClick={() => {
                 setShowDeposit(true);
                 setShowWithdraw(false);
+                setAmount('');
                 setErrorMsg('');
                 setSuccessMsg('');
               }}
@@ -301,6 +302,8 @@ const WalletPage = () => {
               onClick={() => {
                 setShowWithdraw(true);
                 setShowDeposit(false);
+                setAmount('');
+                setUpiId('');
                 setErrorMsg('');
                 setSuccessMsg('');
               }}
