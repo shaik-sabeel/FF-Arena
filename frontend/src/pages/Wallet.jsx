@@ -44,6 +44,7 @@ const WalletPage = () => {
   const balanceCardRef = useRef(null);
   const depositModalRef = useRef(null);
   const withdrawModalRef = useRef(null);
+  const ledgerListRef = useRef(null);
 
   const fetchHistory = async () => {
     try {
@@ -69,7 +70,7 @@ const WalletPage = () => {
   useEffect(() => {
     gsap.fromTo(
       balanceCardRef.current,
-      { scale: 0.9, opacity: 0 },
+      { scale: 0.95, opacity: 0 },
       { scale: 1, opacity: 1, duration: 0.8, ease: 'back.out(1.5)' }
     );
   }, []);
@@ -94,6 +95,17 @@ const WalletPage = () => {
       );
     }
   }, [showWithdraw]);
+
+  useEffect(() => {
+    if (!loadingHistory && history.length > 0 && ledgerListRef.current) {
+      const items = ledgerListRef.current.children;
+      gsap.fromTo(
+        items,
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
+      );
+    }
+  }, [loadingHistory, history]);
 
   const handleDepositSubmit = async (e) => {
     e.preventDefault();
@@ -262,56 +274,60 @@ const WalletPage = () => {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 safe-bottom">
       
-      {/* Wallet Balance Display Card */}
-      <div
-        ref={balanceCardRef}
-        className="glass-panel relative mb-8 overflow-hidden rounded-3xl border border-gaming-border p-6 shadow-neon md:p-8"
-      >
-        <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-gaming-accent/10 blur-3xl" />
-        
-        <div className="flex flex-col justify-between md:flex-row md:items-center">
-          <div className="mb-6 md:mb-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-              <ShieldCheck size={14} className="mr-1 text-gaming-blue" />
-              Secured Arena Wallet
-            </p>
-            <h1 className="mt-2 text-4xl font-black text-white md:text-5xl glow-text-orange font-gaming">
-              ₹{user ? user.walletBalance.toFixed(2) : '0.00'}
-            </h1>
-            <p className="mt-1.5 text-xs text-gaming-text">
-              Linked Game UID: <span className="font-mono text-white font-bold">{user?.freeFireId || 'Not Linked'}</span>
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => {
-                setShowDeposit(true);
-                setShowWithdraw(false);
-                setAmount('');
-                setErrorMsg('');
-                setSuccessMsg('');
-              }}
-              className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-sm font-extrabold text-black shadow-neon hover:shadow-neon-hover transition"
-            >
-              <Plus size={18} />
-              <span>Razorpay Deposit</span>
-            </button>
+      {/* Wallet Balance Display Card with Double Neon Cyan-to-Purple Border */}
+      <div className="relative p-[1.5px] mb-8 rounded-[28px] bg-gradient-to-r from-gaming-accent via-gaming-purple to-gaming-accent shadow-neon transition duration-300">
+        <div className="rounded-[26.5px] p-[1.5px] bg-gradient-to-r from-gaming-purple/40 via-gaming-accent/40 to-gaming-purple/40">
+          <div
+            ref={balanceCardRef}
+            className="glass-panel relative overflow-hidden rounded-[25px] p-6 md:p-8"
+          >
+            <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-gaming-accent/15 blur-3xl animate-pulse" />
             
-            <button
-              onClick={() => {
-                setShowWithdraw(true);
-                setShowDeposit(false);
-                setAmount('');
-                setUpiId('');
-                setErrorMsg('');
-                setSuccessMsg('');
-              }}
-              className="flex items-center space-x-2 rounded-xl border border-gaming-border bg-gaming-card/60 px-5 py-3 text-sm font-bold text-white transition hover:bg-gaming-border"
-            >
-              <Landmark size={18} />
-              <span>Cash Out UPI</span>
-            </button>
+            <div className="flex flex-col justify-between md:flex-row md:items-center relative z-10">
+              <div className="mb-6 md:mb-0">
+                <p className="text-xs font-black uppercase tracking-wider text-gaming-accent flex items-center">
+                  <ShieldCheck size={14} className="mr-1.5 text-gaming-accent animate-pulse" />
+                  Secured Arena Wallet
+                </p>
+                <h1 className="mt-2.5 text-4xl font-black text-white md:text-5xl glow-text-orange font-gaming">
+                  ₹{user ? user.walletBalance.toFixed(2) : '0.00'}
+                </h1>
+                <p className="mt-2 text-xs text-gaming-text">
+                  Linked Game UID: <span className="font-mono text-white font-black bg-gaming-border/60 px-2 py-0.5 rounded border border-gaming-border">{user?.freeFireId || 'Not Linked'}</span>
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3.5">
+                <button
+                  onClick={() => {
+                    setShowDeposit(true);
+                    setShowWithdraw(false);
+                    setAmount('');
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                  }}
+                  className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-xs font-black text-black shadow-neon hover:shadow-neon-hover transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  <Plus size={16} strokeWidth={3} />
+                  <span>Razorpay Deposit</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowWithdraw(true);
+                    setShowDeposit(false);
+                    setAmount('');
+                    setUpiId('');
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                  }}
+                  className="flex items-center space-x-2 rounded-xl border border-gaming-border bg-gaming-card/80 px-5 py-3 text-xs font-black text-white transition-all duration-300 hover:bg-gaming-border/80 hover:border-gaming-blue/40 shadow-glass hover:shadow-neon-blue transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  <Landmark size={16} />
+                  <span>Cash Out UPI</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -336,42 +352,64 @@ const WalletPage = () => {
                 No transactions recorded. Join matches or deposit cash to populate ledger.
               </div>
             ) : (
-              <div className="max-h-[350px] overflow-y-auto pr-1 space-y-3">
+              <div ref={ledgerListRef} className="max-h-[350px] overflow-y-auto pr-1 space-y-3">
                 {history.map((tx) => {
                   const isCredit = ['deposit', 'prize'].includes(tx.type);
                   
+                  const statusColor = 
+                    tx.status === 'completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
+                    tx.status === 'pending' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20 animate-pulse' :
+                    'text-red-400 bg-red-500/10 border-red-500/20';
+
+                  const typeColorBorder = 
+                    tx.type === 'deposit' ? 'border-l-gaming-accent' :
+                    tx.type === 'prize' ? 'border-l-gaming-gold' :
+                    tx.type === 'entry_fee' ? 'border-l-gaming-orange' :
+                    'border-l-gaming-purple'; // withdraw
+
+                  const formattedDate = new Date(tx.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+
                   return (
                     <div
                       key={tx._id}
-                      className="flex items-center justify-between rounded-xl bg-gaming-dark/40 border border-gaming-border/60 p-3 hover:border-gaming-border transition"
+                      className={`flex items-center justify-between rounded-xl bg-gaming-card/40 border border-gaming-border/60 border-l-4 ${typeColorBorder} p-3.5 hover:border-gaming-border hover:bg-gaming-card/80 transition-all duration-300 card-cyber relative overflow-hidden`}
                     >
-                      <div className="flex items-center space-x-3">
+                      {/* Subtle dashed receipt line inside the block */}
+                      <div className="absolute right-24 top-0 bottom-0 border-r border-dashed border-gaming-border/40 hidden sm:block" />
+
+                      <div className="flex items-center space-x-3.5 z-10">
                         <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                          className={`flex h-10 w-10 items-center justify-center rounded-xl ${
                             isCredit 
-                              ? 'bg-green-500/10 text-green-400' 
-                              : 'bg-red-500/10 text-red-400'
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
                           }`}
                         >
-                          {isCredit ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                          {isCredit ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white capitalize">{tx.type.replace('_', ' ')}</p>
-                          <p className="text-[10px] text-gaming-text font-medium">{tx.description || 'Transaction'}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-xs font-black text-white uppercase tracking-wide">{tx.type.replace('_', ' ')}</p>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${statusColor}`}>
+                              {tx.status}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gaming-text font-medium mt-0.5">{tx.description || 'Transaction'}</p>
+                          <p className="text-[8px] font-mono text-gaming-text/60 mt-1 uppercase">ID: TXN-{tx._id.slice(-8)}</p>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <p className={`text-sm font-extrabold ${isCredit ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className="text-right z-10 pr-2">
+                        <p className={`text-sm font-black ${isCredit ? 'text-green-400 glow-text-blue' : 'text-red-400'}`}>
                           {isCredit ? '+' : '-'}₹{tx.amount.toFixed(2)}
                         </p>
-                        <p className="text-[9px] text-gaming-text font-mono">
-                          {new Date(tx.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                        <p className="text-[9px] text-gaming-text font-mono mt-1">
+                          {formattedDate}
                         </p>
                       </div>
                     </div>

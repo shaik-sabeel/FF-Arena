@@ -41,9 +41,9 @@ const TournamentCard = ({ tournament }) => {
   };
 
   return (
-    <div className="glass-panel group relative overflow-hidden rounded-2xl border border-gaming-border transition-all duration-300 hover:border-gaming-accent/40 hover:shadow-neon">
+    <div className="glass-panel card-cyber group relative overflow-hidden rounded-2xl border border-gaming-border">
       {/* Decorative Top Accent Line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gaming-accent to-gaming-blue opacity-50 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gaming-accent via-gaming-purple to-gaming-orange opacity-60 group-hover:opacity-100 transition-opacity" />
 
       <div className="p-5">
         {/* Game Mode and Map */}
@@ -94,9 +94,9 @@ const TournamentCard = ({ tournament }) => {
               {filledSlots}/{slots} ({Math.round(percentFilled)}%)
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-gaming-border overflow-hidden">
+          <div className="h-2 w-full rounded-full bg-gaming-border/80 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-gaming-accent to-gaming-yellow transition-all duration-500"
+              className="h-full rounded-full bg-gradient-neon transition-all duration-500"
               style={{ width: `${percentFilled}%` }}
             />
           </div>
@@ -111,7 +111,7 @@ const TournamentCard = ({ tournament }) => {
 
           <Link
             to={`/tournament/${_id}`}
-            className="flex items-center space-x-1 rounded-lg bg-gaming-accent/10 border border-gaming-accent/20 px-3.5 py-1.5 text-xs font-bold text-gaming-accent transition-all duration-200 group-hover:bg-gaming-accent group-hover:text-white group-hover:shadow-neon"
+            className="flex items-center space-x-1 rounded-lg bg-gaming-accent/10 border border-gaming-accent/20 px-3.5 py-1.5 text-xs font-bold text-gaming-accent transition-all duration-350 group-hover:bg-gaming-accent group-hover:text-black group-hover:shadow-neon"
           >
             <Swords size={13} />
             <span>{isFull ? 'View Info' : 'Join Match'}</span>

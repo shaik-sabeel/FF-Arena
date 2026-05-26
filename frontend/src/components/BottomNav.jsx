@@ -11,7 +11,7 @@ const BottomNav = () => {
   const linkClass = ({ isActive }) =>
     `flex flex-col items-center justify-center flex-1 py-2 text-xs font-semibold transition-all ${
       isActive 
-        ? 'text-gaming-accent scale-110 glow-text-orange' 
+        ? 'text-gaming-accent scale-110 glow-text-blue font-bold' 
         : 'text-gaming-text hover:text-white'
     }`;
 

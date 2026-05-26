@@ -117,9 +117,9 @@ const SettingsPage = () => {
               </div>
               <button
                 onClick={handleInstallApp}
-                className="flex items-center justify-center space-x-2 rounded-xl bg-gaming-accent px-4 py-2.5 text-xs font-extrabold text-white shadow-neon hover:shadow-neon-hover transition"
+                className="flex items-center justify-center space-x-2 rounded-xl bg-gaming-accent px-5 py-2.5 text-xs font-black text-black shadow-neon hover:shadow-neon-hover hover:scale-[1.02] active:scale-100 transition-all duration-300 cursor-pointer"
               >
-                <Download size={14} />
+                <Download size={14} strokeWidth={3} />
                 <span>Install Application</span>
               </button>
             </div>
@@ -160,8 +160,8 @@ const SettingsPage = () => {
             <Gamepad2 className="mr-1.5 text-gaming-blue" size={16} /> Link Character profile
           </h2>
 
-          {errorMsg && <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2 text-xs font-semibold text-red-400">{errorMsg}</div>}
-          {successMsg && <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 p-2 text-xs font-semibold text-green-400">{successMsg}</div>}
+          {errorMsg && <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-xs font-semibold text-red-400">{errorMsg}</div>}
+          {successMsg && <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 p-2.5 text-xs font-semibold text-green-400 flex items-center"><CheckCircle size={14} className="mr-1"/>{successMsg}</div>}
 
           <form onSubmit={handleProfileSave} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -174,7 +174,7 @@ const SettingsPage = () => {
                   placeholder="e.g. 192837465"
                   value={freeFireId}
                   onChange={(e) => setFreeFireId(e.target.value)}
-                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                  className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 backdrop-blur-md py-2.5 px-3.5 text-sm font-medium text-white outline-none transition-all duration-300 focus:border-gaming-accent focus:bg-gaming-dark/60 focus:shadow-[0_0_15px_rgba(0,229,255,0.25)]"
                   required
                 />
               </div>
@@ -188,18 +188,16 @@ const SettingsPage = () => {
                   placeholder="e.g. FF_Gladiator"
                   value={freeFireName}
                   onChange={(e) => setFreeFireName(e.target.value)}
-                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                  className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 backdrop-blur-md py-2.5 px-3.5 text-sm font-medium text-white outline-none transition-all duration-300 focus:border-gaming-accent focus:bg-gaming-dark/60 focus:shadow-[0_0_15px_rgba(0,229,255,0.25)]"
                   required
                 />
               </div>
             </div>
 
-
-
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-gaming-blue px-5 py-2.5 text-xs font-extrabold text-gaming-dark transition shadow-neon-blue hover:shadow-none disabled:opacity-50"
+              className="rounded-xl bg-gaming-blue px-5 py-3 text-xs font-black text-black shadow-neon-blue hover:shadow-[0_0_20px_rgba(0,102,255,0.6)] hover:bg-gaming-blue/95 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:transform-none cursor-pointer"
             >
               {saving ? 'Saving details...' : 'Save Character Link'}
             </button>

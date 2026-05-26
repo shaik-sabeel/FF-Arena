@@ -92,9 +92,9 @@ const Leaderboard = () => {
           >
             {/* Rank 2 - Silver Medalist */}
             {top2 && (
-              <div className="glass-panel group relative flex w-full flex-col items-center rounded-2xl border border-gaming-border/80 bg-gaming-card/40 p-5 text-center shadow-card transition duration-300 hover:border-gaming-text/30 sm:w-1/3">
-                <div className="absolute top-0 left-1/2 h-1 w-16 -translate-x-1/2 bg-slate-400 opacity-60 group-hover:w-24 transition-all" />
-                <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-400/10 text-slate-400 font-bold border border-slate-400/20">
+              <div className="glass-panel card-cyber group relative flex w-full flex-col items-center rounded-2xl border border-gaming-border bg-gaming-card/40 p-5 text-center shadow-card transition duration-300 sm:w-1/3">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-400 to-slate-200 opacity-60 group-hover:opacity-100 transition-all" />
+                <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-300 to-slate-500 text-black font-extrabold border border-slate-300 shadow-neon-blue text-sm">
                    2
                 </div>
                 <h3 className="text-sm font-extrabold text-white truncate max-w-full">
@@ -115,12 +115,12 @@ const Leaderboard = () => {
 
             {/* Rank 1 - Golden Champion */}
             {top1 && (
-              <div className="glass-panel group relative z-10 flex w-full flex-col items-center rounded-3xl border border-gaming-yellow/20 bg-gaming-card/80 p-6 text-center shadow-neon sm:-translate-y-4 sm:w-1/3">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-gaming-accent animate-bounce">
-                  <Crown size={28} className="drop-shadow-[0_0_8px_rgba(53,213,250,0.6)]" />
+              <div className="glass-panel card-cyber group relative z-10 flex w-full flex-col items-center rounded-3xl border border-gaming-gold/30 bg-gaming-card/80 p-6 text-center shadow-neon-gold sm:-translate-y-4 sm:w-1/3">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-gaming-gold animate-bounce">
+                  <Crown size={28} className="drop-shadow-[0_0_8px_rgba(255,183,0,0.6)]" />
                 </div>
-                <div className="absolute top-0 left-1/2 h-1 w-20 -translate-x-1/2 bg-gaming-yellow group-hover:w-28 transition-all" />
-                <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gaming-yellow/10 text-gaming-yellow font-black border border-gaming-yellow/30 text-lg">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-gaming-gold via-gaming-yellow to-gaming-gold group-hover:opacity-100 transition-all" />
+                <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gaming-gold via-gaming-yellow to-gaming-gold text-black font-black border border-gaming-gold shadow-neon-gold text-lg">
                    1
                 </div>
                 <h3 className="text-base font-black text-white truncate max-w-full">
@@ -129,11 +129,11 @@ const Leaderboard = () => {
                 <p className="text-[10px] text-gaming-text">@{top1.username}</p>
 
                 {/* Pedestal */}
-                <div className="mt-4 flex w-full flex-col items-center rounded-xl bg-gaming-yellow/5 border border-gaming-yellow/10 p-3 shadow-glass">
-                  <p className="text-[9px] uppercase tracking-wider text-gaming-text">Earnings</p>
-                  <p className="text-lg font-black text-gaming-yellow glow-text-orange">₹{top1.stats?.earnings || 0}</p>
+                <div className="mt-4 flex w-full flex-col items-center rounded-xl bg-gaming-gold/5 border border-gaming-gold/10 p-3 shadow-glass">
+                  <p className="text-[9px] uppercase tracking-wider text-gaming-text font-semibold">Earnings</p>
+                  <p className="text-lg font-black text-gaming-gold glow-text-orange">₹{top1.stats?.earnings || 0}</p>
                   <p className="mt-1 text-[9px] text-gaming-text font-bold uppercase flex items-center">
-                    <Swords size={10} className="mr-0.5" /> {top1.stats?.kills || 0} Kills
+                    <Swords size={10} className="mr-0.5 animate-pulse" /> {top1.stats?.kills || 0} Kills
                   </p>
                 </div>
               </div>
@@ -141,9 +141,9 @@ const Leaderboard = () => {
 
             {/* Rank 3 - Bronze Medalist */}
             {top3 && (
-              <div className="glass-panel group relative flex w-full flex-col items-center rounded-2xl border border-gaming-border/80 bg-gaming-card/40 p-5 text-center shadow-card transition duration-300 hover:border-amber-700/30 sm:w-1/3">
-                <div className="absolute top-0 left-1/2 h-1 w-16 -translate-x-1/2 bg-amber-700 opacity-60 group-hover:w-24 transition-all" />
-                <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-700/10 text-amber-600 font-bold border border-amber-700/20">
+              <div className="glass-panel card-cyber group relative flex w-full flex-col items-center rounded-2xl border border-gaming-border bg-gaming-card/40 p-5 text-center shadow-card transition duration-300 sm:w-1/3">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-700 to-amber-600 opacity-60 group-hover:opacity-100 transition-all" />
+                <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-600 to-amber-800 text-black font-extrabold border border-amber-600 text-sm">
                    3
                 </div>
                 <h3 className="text-sm font-extrabold text-white truncate max-w-full">

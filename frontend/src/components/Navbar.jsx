@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Wallet, LogOut, User, Gamepad2, Trophy, Settings } from 'lucide-react';
 
@@ -12,12 +12,33 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  const linkClass = ({ isActive }) =>
+    `relative flex items-center space-x-1.5 py-1 text-sm font-semibold transition-all ${
+      isActive 
+        ? 'text-gaming-accent scale-105 glow-text-blue' 
+        : 'text-gaming-text hover:text-white'
+    }`;
+
+  const renderNavLink = (to, icon, label) => (
+    <NavLink to={to} className={linkClass}>
+      {({ isActive }) => (
+        <>
+          {icon}
+          <span>{label}</span>
+          {isActive && (
+            <span className="absolute bottom-[-14px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-gaming-accent shadow-neon animate-pulse" />
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+
   return (
-    <nav className="glass-panel sticky top-0 z-40 w-full border-b border-gaming-border px-4 py-3 md:px-8">
+    <nav className="glass-panel sticky top-0 z-40 w-full border-b border-gaming-border px-4 py-3 md:px-8 shadow-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <img src="/logo.svg" alt="Arena Logo" className="h-9 w-9 drop-shadow-[0_0_8px_rgba(53,213,250,0.6)]" />
+          <img src="/logo.svg" alt="Arena Logo" className="h-9 w-9 drop-shadow-[0_0_8px_rgba(0,229,255,0.6)]" />
           <span className="bg-gradient-neon bg-clip-text text-xl font-extrabold tracking-wider text-transparent font-gaming">
             FF <span className="text-white">ARENA</span>
           </span>
@@ -26,26 +47,11 @@ const Navbar = () => {
         {/* Desktop Navigation Links */}
         {user && (
           <div className="hidden items-center space-x-8 md:flex">
-            <Link to="/" className="flex items-center space-x-1.5 text-sm font-medium text-gaming-text transition hover:text-gaming-accent">
-              <Gamepad2 size={16} />
-              <span>Tournaments</span>
-            </Link>
-            <Link to="/leaderboard" className="flex items-center space-x-1.5 text-sm font-medium text-gaming-text transition hover:text-gaming-accent">
-              <Trophy size={16} />
-              <span>Leaderboard</span>
-            </Link>
-            <Link to="/wallet" className="flex items-center space-x-1.5 text-sm font-medium text-gaming-text transition hover:text-gaming-accent">
-              <Wallet size={16} />
-              <span>Wallet</span>
-            </Link>
-            <Link to="/profile" className="flex items-center space-x-1.5 text-sm font-medium text-gaming-text transition hover:text-gaming-accent">
-              <User size={16} />
-              <span>Profile</span>
-            </Link>
-            <Link to="/settings" className="flex items-center space-x-1.5 text-sm font-medium text-gaming-text transition hover:text-gaming-accent">
-              <Settings size={16} />
-              <span>Settings</span>
-            </Link>
+            {renderNavLink('/', <Gamepad2 size={16} />, 'Tournaments')}
+            {renderNavLink('/leaderboard', <Trophy size={16} />, 'Leaderboard')}
+            {renderNavLink('/wallet', <Wallet size={16} />, 'Wallet')}
+            {renderNavLink('/profile', <User size={16} />, 'Profile')}
+            {renderNavLink('/settings', <Settings size={16} />, 'Settings')}
           </div>
         )}
 

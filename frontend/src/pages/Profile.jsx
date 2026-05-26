@@ -77,16 +77,16 @@ const Profile = () => {
       <div
         ref={cardRef}
         style={{ perspective: 1000 }}
-        className="glass-panel relative mb-8 overflow-hidden rounded-3xl border border-gaming-accent/20 bg-gradient-to-br from-gaming-card to-gaming-dark p-6 shadow-neon"
+        className="glass-panel relative mb-8 overflow-hidden rounded-[24px] border border-gaming-accent/30 bg-gradient-to-br from-gaming-card to-gaming-dark p-6 shadow-neon"
       >
-        <div className="absolute right-0 top-0 -translate-y-6 translate-x-6 select-none opacity-5">
+        <div className="absolute right-0 top-0 -translate-y-6 translate-x-6 select-none opacity-5 animate-pulse">
           <Zap size={220} className="text-gaming-accent" />
         </div>
 
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between relative z-10">
           <div className="flex items-center space-x-4">
-            {/* Holographic Avatar Border */}
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-fire p-0.5 shadow-neon">
+            {/* Holographic Avatar Border with Cyan Glow */}
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-gaming-accent to-gaming-purple p-0.5 shadow-neon">
               <div className="flex h-full w-full items-center justify-center rounded-[14px] bg-gaming-dark text-gaming-accent">
                 <User size={30} />
               </div>
@@ -94,35 +94,35 @@ const Profile = () => {
 
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-xl font-black text-white uppercase">{user.username}</h2>
-                <span className="rounded bg-gaming-accent/15 border border-gaming-accent/20 px-2 py-0.5 text-[9px] font-extrabold uppercase text-gaming-accent">
+                <h2 className="text-xl font-black text-white uppercase tracking-wide">{user.username}</h2>
+                <span className="rounded bg-gaming-accent/15 border border-gaming-accent/30 px-2 py-0.5 text-[9px] font-black uppercase text-gaming-accent tracking-wider">
                   {user.role}
                 </span>
               </div>
-              <p className="text-xs text-gaming-text">{user.email}</p>
+              <p className="text-xs text-gaming-text mt-0.5">{user.email}</p>
             </div>
           </div>
 
           {/* In-Game Name / UID Display panel */}
-          <div className="rounded-2xl border border-gaming-border bg-gaming-dark/60 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gaming-accent">Free Fire Profile</p>
+          <div className="rounded-2xl border border-gaming-border bg-gaming-dark/65 p-4 min-w-[200px] shadow-glass">
+            <p className="text-[10px] font-black uppercase tracking-wider text-gaming-accent">Free Fire Profile</p>
             
             {user.freeFireId ? (
-              <div className="mt-1.5 space-y-1">
-                <p className="text-xs font-medium text-gaming-text">
+              <div className="mt-2 space-y-1.5">
+                <p className="text-xs font-semibold text-gaming-text">
                   IGN:{' '}
-                  <span className="font-extrabold text-white font-gaming text-sm bg-gaming-accent/10 px-2 py-0.5 rounded border border-gaming-accent/20">
+                  <span className="font-black text-white font-gaming text-sm bg-gaming-accent/10 px-2 py-0.5 rounded border border-gaming-accent/20">
                     {user.freeFireName}
                   </span>
                 </p>
-                <p className="text-xs font-medium text-gaming-text">
+                <p className="text-xs font-semibold text-gaming-text">
                   Character UID:{' '}
-                  <span className="font-mono font-bold text-white text-sm">{user.freeFireId}</span>
+                  <span className="font-mono font-bold text-white text-sm bg-gaming-border/80 px-1.5 py-0.5 rounded">{user.freeFireId}</span>
                 </p>
               </div>
             ) : (
-              <div className="mt-1.5 flex items-center text-xs font-semibold text-yellow-500">
-                <AlertTriangle size={13} className="mr-1" />
+              <div className="mt-2 flex items-center text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2.5 py-1.5 rounded-lg border border-yellow-500/20">
+                <AlertTriangle size={14} className="mr-1.5" />
                 No Game ID linked.
               </div>
             )}
@@ -130,34 +130,63 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Grid: Stat blocks */}
+      {/* Grid: Glowing Case-style Stat blocks */}
       <div
         ref={statsRef}
         className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4"
       >
-        <div className="glass-panel rounded-2xl border border-gaming-border p-4 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gaming-text">Matches Played</p>
-          <p className="mt-1.5 text-2xl font-black text-white">{matchesPlayed}</p>
-        </div>
-
-        <div className="glass-panel rounded-2xl border border-gaming-border p-4 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gaming-text">Win Rate</p>
-          <div className="mt-1 flex items-center justify-center space-x-1">
-            <span className="text-2xl font-black text-gaming-yellow">{winRate}%</span>
+        {/* Matches Played Case */}
+        <div className="glass-panel card-cyber group relative overflow-hidden rounded-2xl border border-gaming-border/80 p-5 hover:border-gaming-orange/30 transition-all duration-300">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gaming-orange to-transparent" />
+          <div className="absolute -right-4 -bottom-4 opacity-5 text-gaming-orange group-hover:scale-110 transition duration-300">
+            <Play size={70} strokeWidth={1} />
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-gaming-text">Matches Played</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <p className="text-3xl font-black text-white leading-none">{matchesPlayed}</p>
+            <span className="text-[9px] font-bold text-gaming-orange uppercase tracking-wide bg-gaming-orange/10 px-1.5 py-0.5 rounded border border-gaming-orange/10">Active</span>
           </div>
         </div>
 
-        <div className="glass-panel rounded-2xl border border-gaming-border p-4 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gaming-text">K/D Ratio</p>
-          <p className="mt-1.5 text-2xl font-black text-gaming-blue flex items-center justify-center">
-            <Swords size={18} className="mr-1" />
-            {kdRatio}
-          </p>
+        {/* Win Rate Case */}
+        <div className="glass-panel card-cyber group relative overflow-hidden rounded-2xl border border-gaming-border/80 p-5 hover:border-gaming-yellow/30 transition-all duration-300">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gaming-yellow to-transparent" />
+          <div className="absolute -right-4 -bottom-4 opacity-5 text-gaming-yellow group-hover:scale-110 transition duration-300">
+            <Award size={70} strokeWidth={1} />
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-gaming-text">Win Rate</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <p className="text-3xl font-black text-gaming-yellow glow-text-orange leading-none">{winRate}%</p>
+            <span className="text-[9px] font-bold text-gaming-yellow uppercase tracking-wide bg-gaming-yellow/10 px-1.5 py-0.5 rounded border border-gaming-yellow/10">Victory</span>
+          </div>
         </div>
 
-        <div className="glass-panel rounded-2xl border border-gaming-border p-4 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gaming-text">Winnings</p>
-          <p className="mt-1.5 text-2xl font-black text-green-400">₹{earnings}</p>
+        {/* K/D Ratio Case */}
+        <div className="glass-panel card-cyber group relative overflow-hidden rounded-2xl border border-gaming-border/80 p-5 hover:border-gaming-blue/30 transition-all duration-300">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gaming-blue to-transparent" />
+          <div className="absolute -right-4 -bottom-4 opacity-5 text-gaming-blue group-hover:scale-110 transition duration-300">
+            <Swords size={70} strokeWidth={1} />
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-gaming-text">K/D Ratio</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <p className="text-3xl font-black text-gaming-blue leading-none flex items-center">
+              {kdRatio}
+            </p>
+            <span className="text-[9px] font-bold text-gaming-blue uppercase tracking-wide bg-gaming-blue/10 px-1.5 py-0.5 rounded border border-gaming-blue/10">Combat</span>
+          </div>
+        </div>
+
+        {/* Winnings Case */}
+        <div className="glass-panel card-cyber group relative overflow-hidden rounded-2xl border border-gaming-border/80 p-5 hover:border-gaming-accent/30 transition-all duration-300">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gaming-accent to-transparent" />
+          <div className="absolute -right-4 -bottom-4 opacity-5 text-gaming-accent group-hover:scale-110 transition duration-300">
+            <Star size={70} strokeWidth={1} />
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-gaming-text">Total Winnings</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <p className="text-3xl font-black text-gaming-accent glow-text-blue leading-none">₹{earnings}</p>
+            <span className="text-[9px] font-bold text-gaming-accent uppercase tracking-wide bg-gaming-accent/10 px-1.5 py-0.5 rounded border border-gaming-accent/10">Cash</span>
+          </div>
         </div>
       </div>
 

@@ -270,7 +270,7 @@ const Home = () => {
               {user && (user.role === 'host' || user.role === 'admin') && (
                 <button
                   onClick={handleHostClick}
-                  className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-xs font-extrabold text-black shadow-neon transition hover:bg-opacity-95 hover:shadow-neon-hover"
+                  className="flex items-center space-x-2 rounded-xl bg-gradient-fire px-5 py-3 text-xs font-extrabold text-white shadow-neon-orange hover:shadow-neon-orange-hover hover:scale-105 transition-all duration-300"
                 >
                   <Plus size={16} />
                   <span>Host Tournament</span>
@@ -580,7 +580,7 @@ const Home = () => {
                 <button
                   type="submit"
                   disabled={submittingHost}
-                  className="w-full rounded-xl bg-gradient-fire py-3 text-sm font-extrabold text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
+                  className="w-full rounded-xl bg-gradient-fire py-3 text-sm font-extrabold text-white shadow-neon-orange hover:shadow-neon-orange-hover hover:scale-[1.02] transition-all duration-300 disabled:opacity-50"
                 >
                   {submittingHost ? 'Publishing...' : 'Deploy Tournament'}
                 </button>
@@ -622,10 +622,10 @@ const Home = () => {
             <button
               key={mode}
               onClick={() => setFilterMode(mode)}
-              className={`rounded-xl px-4 py-2 text-xs font-bold uppercase transition duration-200 ${
+              className={`rounded-xl px-4 py-2 text-xs font-bold uppercase transition-all duration-350 ${
                 filterMode === mode
-                  ? 'bg-gaming-accent text-black shadow-neon'
-                  : 'border border-gaming-border bg-gaming-card/40 text-gaming-text hover:bg-gaming-border hover:text-white'
+                  ? 'bg-gradient-neon text-black font-extrabold shadow-neon hover:scale-105'
+                  : 'border border-gaming-border bg-gaming-card/45 text-gaming-text hover:bg-gaming-border hover:text-white hover:scale-105'
               }`}
             >
               {mode}

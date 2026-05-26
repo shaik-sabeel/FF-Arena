@@ -81,8 +81,16 @@ const Login = () => {
   useEffect(() => {
     gsap.fromTo(
       formRef.current,
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }
+      { opacity: 0, scale: 0.95, y: 30 },
+      { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: 'back.out(1.2)' }
+    );
+
+    // Stagger animate all children fields
+    const children = formRef.current.querySelectorAll('.mb-6 > *, form > div, form button, .text-center');
+    gsap.fromTo(
+      children,
+      { opacity: 0, y: 15 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power2.out', delay: 0.25 }
     );
   }, []);
 
@@ -112,26 +120,17 @@ const Login = () => {
 
 
   return (
-    <div className="flex min-h-[85vh] items-center justify-center px-4 py-8">
+    <div 
+      className="relative flex min-h-screen items-center justify-center px-4 py-8 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/images/bg.png')" }}
+    >
+      {/* Dark blur overlay */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-0" />
+      
       <div
         ref={formRef}
-        className="glass-panel w-full max-w-md rounded-2xl border border-gaming-border p-8 shadow-card"
+        className="glass-panel relative z-10 w-full max-w-md rounded-2xl border border-gaming-border p-8 shadow-card"
       >
-        {/* Header Logo */}
-        <div className="mb-6 text-center">
-          <img
-            src="/logo.svg"
-            alt="Logo"
-            className="mx-auto mb-4 h-16 w-16 drop-shadow-[0_0_12px_rgba(53,213,250,0.6)]"
-          />
-          <h2 className="text-2xl font-black tracking-wide text-white font-gaming uppercase">
-            Welcome to <span className="text-gaming-accent">FF Arena</span>
-          </h2>
-          <p className="mt-1.5 text-xs text-gaming-text">
-            Log in to participate in tournaments and claim prizes
-          </p>
-        </div>
-
         {forgotMode ? (
           <div>
             {/* Header */}

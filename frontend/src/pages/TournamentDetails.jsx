@@ -504,28 +504,28 @@ const TournamentDetails = () => {
               {/* Set up Custom Match Room Details */}
               {tournament.status === 'upcoming' && (
                 <form onSubmit={handleRoomPublish} className="space-y-3.5">
-                  <p className="text-[10px] text-gaming-text font-semibold">Publish Free Fire Custom Room credentials to all registered players:</p>
+                  <p className="text-[10px] text-gaming-text font-bold">Publish Free Fire Custom Room credentials to all registered players:</p>
                   
                   <div>
-                    <label className="mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-gaming-text">Room ID</label>
+                    <label className="mb-0.5 block text-[9px] font-black uppercase tracking-wider text-gaming-text">Room ID</label>
                     <input
                       type="text"
                       placeholder="e.g. 54321098"
                       value={roomIdInput}
                       onChange={(e) => setRoomIdInput(e.target.value)}
-                      className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2 px-3 text-xs font-semibold text-white outline-none focus:border-gaming-accent"
+                      className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 backdrop-blur-md py-2 px-3 text-xs font-semibold text-white outline-none transition-all duration-300 focus:border-gaming-accent focus:bg-gaming-dark/60 focus:shadow-[0_0_15px_rgba(0,229,255,0.25)]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-gaming-text">Room Password</label>
+                    <label className="mb-0.5 block text-[9px] font-black uppercase tracking-wider text-gaming-text">Room Password</label>
                     <input
                       type="text"
                       placeholder="e.g. play678"
                       value={roomPasswordInput}
                       onChange={(e) => setRoomPasswordInput(e.target.value)}
-                      className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2 px-3 text-xs font-semibold text-white outline-none focus:border-gaming-accent"
+                      className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 backdrop-blur-md py-2 px-3 text-xs font-semibold text-white outline-none transition-all duration-300 focus:border-gaming-accent focus:bg-gaming-dark/60 focus:shadow-[0_0_15px_rgba(0,229,255,0.25)]"
                       required
                     />
                   </div>
@@ -533,7 +533,7 @@ const TournamentDetails = () => {
                   <button
                     type="submit"
                     disabled={updatingRoom}
-                    className="w-full rounded-xl bg-gaming-accent py-2 text-xs font-extrabold text-white transition hover:shadow-neon"
+                    className="w-full rounded-xl bg-gaming-accent py-2.5 text-xs font-black text-black transition-all duration-300 hover:shadow-neon transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer disabled:opacity-50 disabled:transform-none"
                   >
                     {updatingRoom ? 'Deploying Room...' : 'Start Match & Send Room ID'}
                   </button>
