@@ -194,36 +194,7 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
-                User Role
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center space-x-2 text-xs font-semibold text-gaming-text cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    value="user"
-                    checked={role === 'user'}
-                    onChange={() => setRole('user')}
-                    className="accent-gaming-accent"
-                  />
-                  <span className={role === 'user' ? 'text-white font-bold' : ''}>Player</span>
-                </label>
 
-                <label className="flex items-center space-x-2 text-xs font-semibold text-gaming-text cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    value="host"
-                    checked={role === 'host'}
-                    onChange={() => setRole('host')}
-                    className="accent-gaming-accent"
-                  />
-                  <span className={role === 'host' ? 'text-white font-bold' : ''}>Host (Can deploy Custom Match Rooms)</span>
-                </label>
-              </div>
-            </div>
 
             <button
               type="submit"

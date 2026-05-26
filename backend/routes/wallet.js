@@ -5,6 +5,55 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const https = require('https');
+
+// Helper to make native HTTP/HTTPS POST requests
+const makeHttpsPost = (url, headers, body) => {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      method: 'POST',
+      hostname: urlObj.hostname,
+      path: urlObj.pathname,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let responseBody = '';
+      res.on('data', (chunk) => {
+        responseBody += chunk;
+      });
+      res.on('end', () => {
+        const isOk = res.statusCode >= 200 && res.statusCode < 300;
+        resolve({
+          ok: isOk,
+          statusCode: res.statusCode,
+          json: () => {
+            try {
+              return JSON.parse(responseBody);
+            } catch (e) {
+              return {};
+            }
+          },
+          text: () => responseBody
+        });
+      });
+    });
+
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    if (body) {
+      req.write(JSON.stringify(body));
+    }
+    req.end();
+  });
+};
+
 
 // Initialize Razorpay Instance if credentials are set
 const razorpayInstance = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
@@ -92,88 +141,80 @@ router.post('/withdraw', auth, async (req, res) => {
     let payoutStatus = 'completed';
     let description = `Withdrawn to UPI: ${payoutDetails}`;
 
+    const hasRazorpayX = process.env.RAZORPAY_KEY_ID && 
+                         process.env.RAZORPAY_KEY_SECRET && 
+                         process.env.RAZORPAYX_ACCOUNT_NUMBER && 
+                         process.env.RAZORPAYX_ACCOUNT_NUMBER.trim() !== '' && 
+                         !process.env.RAZORPAYX_ACCOUNT_NUMBER.includes('your_razorpayx_account_number_here') &&
+                         process.env.RAZORPAYX_ACCOUNT_NUMBER !== 'undefined';
+
     // If RazorpayX is configured, perform real payout
-    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAYX_ACCOUNT_NUMBER) {
+    if (hasRazorpayX) {
       try {
         const authHeader = 'Basic ' + Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
         
         // 1. Create Contact
         console.log('[Payout] Registering RazorpayX contact for user:', user.email);
-        const contactRes = await fetch('https://api.razorpay.com/v1/contacts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeader
-          },
-          body: JSON.stringify({
-            name: user.username,
-            email: user.email,
-            type: 'customer',
-            reference_id: user._id.toString()
-          })
+        const contactRes = await makeHttpsPost('https://api.razorpay.com/v1/contacts', {
+          'Authorization': authHeader
+        }, {
+          name: user.username,
+          email: user.email,
+          type: 'customer',
+          reference_id: user._id.toString()
         });
         
         if (!contactRes.ok) {
-          const errText = await contactRes.text();
+          const errText = contactRes.text();
           throw new Error(`RazorpayX Contact registration failed: ${errText}`);
         }
         
-        const contactData = await contactRes.json();
+        const contactData = contactRes.json();
         const contactId = contactData.id;
         console.log('[Payout] Created RazorpayX contact:', contactId);
         
         // 2. Create Fund Account (UPI)
         console.log('[Payout] Linking RazorpayX fund account (UPI) for contact:', contactId);
-        const fundRes = await fetch('https://api.razorpay.com/v1/fund_accounts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeader
-          },
-          body: JSON.stringify({
-            contact_id: contactId,
-            account_type: 'vpa',
-            vpa: {
-              address: payoutDetails
-            }
-          })
+        const fundRes = await makeHttpsPost('https://api.razorpay.com/v1/fund_accounts', {
+          'Authorization': authHeader
+        }, {
+          contact_id: contactId,
+          account_type: 'vpa',
+          vpa: {
+            address: payoutDetails
+          }
         });
         
         if (!fundRes.ok) {
-          const errText = await fundRes.text();
+          const errText = fundRes.text();
           throw new Error(`RazorpayX Fund Account linking failed: ${errText}`);
         }
         
-        const fundData = await fundRes.json();
+        const fundData = fundRes.json();
         const fundAccountId = fundData.id;
         console.log('[Payout] Linked fund account ID:', fundAccountId);
         
         // 3. Create Payout
         console.log('[Payout] Initiating RazorpayX payout for amount (paise):', Math.round(numericAmount * 100));
-        const payoutRes = await fetch('https://api.razorpay.com/v1/payouts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeader
-          },
-          body: JSON.stringify({
-            account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER,
-            fund_account_id: fundAccountId,
-            amount: Math.round(numericAmount * 100), // convert to paise
-            currency: 'INR',
-            mode: 'UPI',
-            purpose: 'payout',
-            queue_if_low_balance: true,
-            narration: 'FF Arena Wallet Payout'
-          })
+        const payoutRes = await makeHttpsPost('https://api.razorpay.com/v1/payouts', {
+          'Authorization': authHeader
+        }, {
+          account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER,
+          fund_account_id: fundAccountId,
+          amount: Math.round(numericAmount * 100), // convert to paise
+          currency: 'INR',
+          mode: 'UPI',
+          purpose: 'payout',
+          queue_if_low_balance: true,
+          narration: 'FF Arena Wallet Payout'
         });
         
         if (!payoutRes.ok) {
-          const errText = await payoutRes.text();
+          const errText = payoutRes.text();
           throw new Error(`RazorpayX Payout execution failed: ${errText}`);
         }
         
-        const payoutData = await payoutRes.json();
+        const payoutData = payoutRes.json();
         payoutId = payoutData.id;
         payoutStatus = payoutData.status; // e.g. processing, queued, processed
         description = `Withdrawn to UPI: ${payoutDetails} (Ref: ${payoutId})`;

@@ -267,13 +267,15 @@ const Home = () => {
             </p>
 
             <div className="mt-6 flex flex-wrap gap-4">
-              <button
-                onClick={handleHostClick}
-                className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-xs font-extrabold text-black shadow-neon transition hover:bg-opacity-95 hover:shadow-neon-hover"
-              >
-                <Plus size={16} />
-                <span>Host Tournament</span>
-              </button>
+              {user && (user.role === 'host' || user.role === 'admin') && (
+                <button
+                  onClick={handleHostClick}
+                  className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-xs font-extrabold text-black shadow-neon transition hover:bg-opacity-95 hover:shadow-neon-hover"
+                >
+                  <Plus size={16} />
+                  <span>Host Tournament</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   const element = document.getElementById('match-list');
@@ -642,7 +644,9 @@ const Home = () => {
             <Gamepad2 size={48} className="mb-4 text-gaming-text opacity-40" />
             <h3 className="text-lg font-bold text-white">No active matches found</h3>
             <p className="mt-1 max-w-sm text-xs text-gaming-text">
-              There are no tournaments currently listed in this category. Click "Host Tournament" to set up your own lobby.
+              {user && (user.role === 'host' || user.role === 'admin')
+                ? 'There are no tournaments currently listed in this category. Click "Host Tournament" to set up your own lobby.'
+                : 'There are no tournaments currently listed in this category. Please check back later.'}
             </p>
           </div>
         ) : (

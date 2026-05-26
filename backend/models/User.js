@@ -42,6 +42,14 @@ const UserSchema = new mongoose.Schema({
     enum: ['user', 'host', 'admin'],
     default: 'user'
   },
+  resetOtp: {
+    type: String,
+    default: null
+  },
+  resetOtpExpiry: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
