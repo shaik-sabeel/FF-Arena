@@ -24,7 +24,6 @@ const Login = () => {
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [devOtpMsg, setDevOtpMsg] = useState('');
 
   const handleForgotEmailSubmit = async (e) => {
     e.preventDefault();
@@ -34,13 +33,9 @@ const Login = () => {
     }
     setForgotLoading(true);
     setForgotError('');
-    setDevOtpMsg('');
     try {
       const res = await API.post('/auth/forgot-password', { email: forgotEmail });
       setForgotSuccess(res.data.msg);
-      if (res.data.devOtp) {
-        setDevOtpMsg(`[Sandbox Mode] Generated OTP: ${res.data.devOtp}`);
-      }
       setForgotStep(2);
     } catch (err) {
       setForgotError(err.response?.data?.msg || 'Failed to request password reset code.');
@@ -198,11 +193,6 @@ const Login = () => {
             {/* Step 2: Input OTP & New Password */}
             {forgotStep === 2 && (
               <form onSubmit={handleResetSubmit} className="space-y-5">
-                {devOtpMsg && (
-                  <div className="mb-3 rounded-lg border border-gaming-accent/25 bg-gaming-accent/10 px-3.5 py-2.5 text-xs font-bold text-gaming-accent select-all">
-                    {devOtpMsg}
-                  </div>
-                )}
                 {forgotSuccess && (
                   <div className="mb-3 rounded-lg border border-green-500/20 bg-green-500/10 px-3.5 py-2.5 text-xs font-semibold text-green-400">
                     {forgotSuccess}

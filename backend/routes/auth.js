@@ -240,8 +240,7 @@ router.post('/forgot-password', async (req, res) => {
 
     res.json({
       success: true,
-      msg: isMock ? 'OTP generated (Mock Mode)' : 'OTP verification code has been dispatched to your email.',
-      ...(isMock && { devOtp: otp })
+      msg: isMock ? 'OTP verification code has been generated. Please check your backend terminal/logs.' : 'OTP verification code has been dispatched to your email.'
     });
 
   } catch (err) {
