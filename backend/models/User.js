@@ -42,6 +42,10 @@ const UserSchema = new mongoose.Schema({
     enum: ['user', 'host', 'admin'],
     default: 'user'
   },
+  isObserver: {
+    type: Boolean,
+    default: false
+  },
   resetOtp: {
     type: String,
     default: null

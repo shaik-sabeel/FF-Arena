@@ -2,157 +2,240 @@ const Tournament = require('../models/Tournament');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 
-// Core logic to resolve a tournament and distribute payouts
-const resolveTournamentPayout = async (tournamentId) => {
+// Core logic to resolve a tournament and distribute payouts using Observer Consensus
+const checkConsensusAndPayout = async (tournamentId) => {
   try {
     const tournament = await Tournament.findById(tournamentId)
       .populate('host')
-      .populate('playersJoined');
+      .populate('playersJoined')
+      .populate('observersJoined');
 
     if (!tournament) {
-      console.error(`[Automation Bot] Tournament ${tournamentId} not found`);
-      return;
+      return { success: false, msg: 'Tournament not found' };
     }
 
     if (tournament.status === 'completed') {
-      return;
+      return { success: false, msg: 'Tournament is already completed' };
     }
 
+    const totalObservers = tournament.observersJoined ? tournament.observersJoined.length : 0;
+    const totalVotes = tournament.observerVotes ? tournament.observerVotes.length : 0;
+
+    // 1. If observers are configured, verify consensus first
+    if (totalObservers > 0) {
+      if (totalVotes < totalObservers) {
+        console.log(`[Automation Bot] Tournament "${tournament.title}" waiting for all observers to vote (${totalVotes}/${totalObservers} voted).`);
+        return { success: false, msg: `Waiting for all observers to vote (${totalVotes}/${totalObservers} voted)` };
+      }
+
+      // Check if all votes are identical
+      let hasConsensus = true;
+      const firstVote = tournament.observerVotes[0].results;
+      
+      const firstMap = {};
+      firstVote.forEach(r => {
+        firstMap[r.user.toString()] = { rank: r.rank, kills: r.kills };
+      });
+
+      for (let i = 1; i < tournament.observerVotes.length; i++) {
+        const voteResults = tournament.observerVotes[i].results;
+        
+        if (voteResults.length !== firstVote.length) {
+          hasConsensus = false;
+          break;
+        }
+
+        for (const r of voteResults) {
+          const uId = r.user.toString();
+          if (!firstMap[uId] || firstMap[uId].rank !== r.rank || firstMap[uId].kills !== r.kills) {
+            hasConsensus = false;
+            break;
+          }
+        }
+
+        if (!hasConsensus) break;
+      }
+
+      if (!hasConsensus) {
+        console.warn(`[Automation Bot] Mismatch detected in observer votes for "${tournament.title}". Flagging as disputed.`);
+        
+        // Mark as disputed in roomDetails so UI can display it
+        tournament.roomDetails = {
+          ...tournament.roomDetails,
+          disputed: true
+        };
+        await tournament.save();
+        return { success: false, msg: 'Consensus failed: Observers submitted conflicting results' };
+      }
+
+      // We have consensus! Resolve match using the observers' voted results.
+      console.log(`[Automation Bot] Consensus reached for "${tournament.title}". Executing payments...`);
+
+      const host = await User.findById(tournament.host._id);
+      if (!host) {
+        return { success: false, msg: 'Host account not found' };
+      }
+
+      // Calculate total payouts: prize pool + observer rewards
+      const totalObserverReward = (tournament.observerReward || 0) * totalObservers;
+      const totalDeduction = tournament.prizePool + totalObserverReward;
+
+      if (host.walletBalance < totalDeduction) {
+        console.warn(`[Automation Bot] Host ${host.username} has insufficient balance (₹${host.walletBalance}) for prize pool + observer rewards (₹${totalDeduction}). Refunding players...`);
+        await refundTournamentPlayers(tournament, 'Cancelled: Host had insufficient balance to cover prize pool + observer rewards');
+        return { success: false, msg: 'Host has insufficient balance' };
+      }
+
+      // Map prizes by rank
+      const prizesMap = {};
+      if (tournament.prizeDistribution?.prizes && tournament.prizeDistribution.prizes.length > 0) {
+        tournament.prizeDistribution.prizes.forEach(p => {
+          prizesMap[p.rank] = p.amount;
+        });
+      } else {
+        prizesMap[1] = tournament.prizePool;
+      }
+
+      // Deduct from Host
+      host.walletBalance -= totalDeduction;
+      await host.save();
+
+      // Log Host Payout deduction
+      const hostTransaction = new Transaction({
+        user: host._id,
+        type: 'withdraw',
+        amount: totalDeduction,
+        status: 'completed',
+        description: `Prize pool (₹${tournament.prizePool}) + Spectator rewards (₹${totalObserverReward}) deduction for match: ${tournament.title}`
+      });
+      await hostTransaction.save();
+
+      // Process Player Winnings
+      const results = [];
+      let winnerId = null;
+
+      for (const r of firstVote) {
+        const player = await User.findById(r.user);
+        if (player) {
+          const prizeWon = prizesMap[r.rank] || 0;
+          player.stats.kills += Number(r.kills || 0);
+          player.stats.earnings += Number(prizeWon || 0);
+          player.walletBalance += Number(prizeWon || 0);
+
+          if (Number(r.rank) === 1) {
+            player.stats.matchesWon += 1;
+            winnerId = player._id;
+          } else {
+            player.stats.matchesLost += 1;
+          }
+
+          await player.save();
+
+          if (prizeWon > 0) {
+            const transaction = new Transaction({
+              user: player._id,
+              type: 'prize',
+              amount: prizeWon,
+              status: 'completed',
+              description: `Match winnings (Rank #${r.rank}) for lobby: ${tournament.title}`
+            });
+            await transaction.save();
+          }
+
+          results.push({
+            user: player._id,
+            rank: r.rank,
+            kills: r.kills,
+            prizeWon: prizeWon
+          });
+        }
+      }
+
+      // Process Observer Winnings
+      if (tournament.observerReward > 0) {
+        for (const observerObj of tournament.observersJoined) {
+          const observer = await User.findById(observerObj._id);
+          if (observer) {
+            observer.walletBalance += tournament.observerReward;
+            await observer.save();
+
+            const transaction = new Transaction({
+              user: observer._id,
+              type: 'prize',
+              amount: tournament.observerReward,
+              status: 'completed',
+              description: `Spectator reward for match: ${tournament.title}`
+            });
+            await transaction.save();
+          }
+        }
+      }
+
+      // Mark complete
+      tournament.results = results;
+      tournament.winner = winnerId;
+      tournament.status = 'completed';
+      if (tournament.roomDetails) {
+        tournament.roomDetails.disputed = false;
+      }
+      await tournament.save();
+
+      return { success: true, msg: 'Consensus payout processed successfully' };
+    } else {
+      // 2. If NO observers are configured, fallback to standard host manual resolution (or auto-resolve simulation)
+      console.log(`[Automation Bot] Resolving tournament "${tournament.title}" without observers (simulation bypass).`);
+      return await resolveTournamentSimulation(tournament);
+    }
+  } catch (err) {
+    console.error('[Automation Bot] Error in consensus check:', err.message);
+    return { success: false, error: err.message };
+  }
+};
+
+// Simulation fallback for match resolving when NO observers are registered
+const resolveTournamentSimulation = async (tournament) => {
+  try {
     const host = await User.findById(tournament.host._id);
-    if (!host) {
-      console.error(`[Automation Bot] Host account not found for tournament ${tournament.title}`);
-      return;
-    }
+    if (!host) return { success: false, msg: 'Host not found' };
 
-    // If host has insufficient balance, refund players and cancel
     if (host.walletBalance < tournament.prizePool) {
-      console.warn(`[Automation Bot] Host ${host.username} has insufficient balance (₹${host.walletBalance}) for prize pool (₹${tournament.prizePool}). Refunding players...`);
       await refundTournamentPlayers(tournament, 'Cancelled: Host had insufficient balance to payout prize pool');
-      return;
+      return { success: false, msg: 'Host has insufficient balance' };
     }
 
     // Retrieve prize distribution setup
-    const dist = {
-      winnerCount: tournament.prizeDistribution?.winnerCount || 1,
-      firstPlacePrize: (tournament.prizeDistribution?.firstPlacePrize > 0) ? tournament.prizeDistribution.firstPlacePrize : tournament.prizePool,
-      secondPlacePrize: tournament.prizeDistribution?.secondPlacePrize || 0,
-      thirdPlacePrize: tournament.prizeDistribution?.thirdPlacePrize || 0
-    };
-
-    if (tournament.playersJoined.length === 0) {
-      console.log(`[Automation Bot] Resolving tournament "${tournament.title}" with 0 players. Marking as completed.`);
-      tournament.status = 'completed';
-      await tournament.save();
-      return;
+    const prizesMap = {};
+    if (tournament.prizeDistribution?.prizes && tournament.prizeDistribution.prizes.length > 0) {
+      tournament.prizeDistribution.prizes.forEach(p => {
+        prizesMap[p.rank] = p.amount;
+      });
+    } else {
+      prizesMap[1] = tournament.prizePool;
     }
 
-    // Helper to generate random integer between min and max
-    const getRandomKills = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    if (tournament.playersJoined.length === 0) {
+      tournament.status = 'completed';
+      await tournament.save();
+      return { success: true, msg: 'Completed with 0 players' };
+    }
 
     // Map winners using the registered players list
     const player1 = tournament.playersJoined[0];
     const player2 = tournament.playersJoined.length >= 2 ? tournament.playersJoined[1] : null;
     const player3 = tournament.playersJoined.length >= 3 ? tournament.playersJoined[2] : null;
 
-    // 1. Simulate Garena Free Fire Custom Room Results scoreboard
-    const garenaLobbyResults = [];
+    // Simulate scoreboard ranks (Viper_Slayer gets 1st, TitanGamer gets 2nd/3rd etc.)
+    const simulatedResults = [];
+    const getRandomKills = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-    // Assign 1st place
-    if (player1 && player1.freeFireName) {
-      garenaLobbyResults.push({
-        ign: player1.freeFireName,
-        rank: 1,
-        kills: getRandomKills(6, 15)
-      });
-    }
+    if (player1) simulatedResults.push({ user: player1._id, rank: 1, kills: getRandomKills(5, 12) });
+    if (player2) simulatedResults.push({ user: player2._id, rank: 2, kills: getRandomKills(2, 8) });
+    if (player3) simulatedResults.push({ user: player3._id, rank: 3, kills: getRandomKills(1, 5) });
 
-    // Assign 2nd place
-    if (dist.winnerCount >= 2 && player2 && player2.freeFireName) {
-      garenaLobbyResults.push({
-        ign: player2.freeFireName,
-        rank: 2,
-        kills: getRandomKills(3, 9)
-      });
-    }
-
-    // Assign 3rd place
-    if (dist.winnerCount === 3 && player3 && player3.freeFireName) {
-      garenaLobbyResults.push({
-        ign: player3.freeFireName,
-        rank: 3,
-        kills: getRandomKills(1, 6)
-      });
-    }
-
-    // Fill remaining registered players with default placement and random kills
-    const simulatedIgns = garenaLobbyResults.map(r => r.ign.toLowerCase());
-    for (const joinedPlayer of tournament.playersJoined) {
-      if (joinedPlayer.freeFireName && !simulatedIgns.includes(joinedPlayer.freeFireName.toLowerCase())) {
-        garenaLobbyResults.push({
-          ign: joinedPlayer.freeFireName,
-          rank: getRandomKills(4, 25),
-          kills: getRandomKills(0, 4)
-        });
-      }
-    }
-
-    // Add dummy players to simulate a realistic 50-player custom room lobby
-    const dummyNames = [
-      'Viper_Slayer', 'Alpha_Ghost', 'Shadow_Ninja', 'Sniper_Wolf', 'Death_Bringer',
-      'Fire_Lord', 'Dark_Knight', 'Silent_Assassin', 'Cyber_Punk', 'Storm_Rider',
-      'Frost_Byte', 'Vortex_X', 'Phoenix_FF', 'Thunder_Bolt', 'Rage_Quit'
-    ];
-    let rankCounter = 4;
-    while (garenaLobbyResults.length < 50 && rankCounter <= 50) {
-      const isRankAssigned = garenaLobbyResults.some(r => r.rank === rankCounter);
-      if (!isRankAssigned) {
-        const dummyIgn = `${dummyNames[Math.floor(Math.random() * dummyNames.length)]}_${getRandomKills(100, 999)}`;
-        garenaLobbyResults.push({
-          ign: dummyIgn,
-          rank: rankCounter,
-          kills: getRandomKills(0, 3)
-        });
-      }
-      rankCounter++;
-    }
-
-    // Sort lobby results by rank
-    garenaLobbyResults.sort((a, b) => a.rank - b.rank);
-
-    // 2. Match lobby results against the registered players list by case-insensitive IGN
-    const results = [];
-    let winnerId = null;
-
-    for (const entry of garenaLobbyResults) {
-      const matchedPlayer = tournament.playersJoined.find(
-        p => p.freeFireName && p.freeFireName.trim().toLowerCase() === entry.ign.trim().toLowerCase()
-      );
-
-      if (matchedPlayer) {
-        let prizeWon = 0;
-        if (entry.rank === 1) {
-          prizeWon = dist.firstPlacePrize;
-          winnerId = matchedPlayer._id;
-        } else if (entry.rank === 2 && dist.winnerCount >= 2) {
-          prizeWon = dist.secondPlacePrize;
-        } else if (entry.rank === 3 && dist.winnerCount === 3) {
-          prizeWon = dist.thirdPlacePrize;
-        }
-
-        results.push({
-          user: matchedPlayer._id,
-          rank: entry.rank,
-          kills: entry.kills,
-          prizeWon: prizeWon
-        });
-      }
-    }
-
-    // 3. Deduct total prize pool from Host wallet
+    // Deduct Host Wallet
     host.walletBalance -= tournament.prizePool;
     await host.save();
 
-    // Log host withdrawal transaction
     const hostTransaction = new Transaction({
       user: host._id,
       type: 'withdraw',
@@ -162,45 +245,56 @@ const resolveTournamentPayout = async (tournamentId) => {
     });
     await hostTransaction.save();
 
-    // 4. Process player wallet credit and stats updates
-    for (const result of results) {
-      const player = await User.findById(result.user);
-      if (player) {
-        player.stats.kills += Number(result.kills || 0);
-        player.stats.earnings += Number(result.prizeWon || 0);
-        player.walletBalance += Number(result.prizeWon || 0);
+    // Process winnings
+    const results = [];
+    let winnerId = null;
 
-        if (Number(result.rank) === 1) {
+    for (const r of simulatedResults) {
+      const player = await User.findById(r.user);
+      if (player) {
+        const prizeWon = prizesMap[r.rank] || 0;
+        player.stats.kills += Number(r.kills || 0);
+        player.stats.earnings += Number(prizeWon || 0);
+        player.walletBalance += Number(prizeWon || 0);
+
+        if (Number(r.rank) === 1) {
           player.stats.matchesWon += 1;
+          winnerId = player._id;
         } else {
           player.stats.matchesLost += 1;
         }
 
         await player.save();
 
-        // Create transaction history entry for winnings payout
-        if (Number(result.prizeWon) > 0) {
+        if (prizeWon > 0) {
           const transaction = new Transaction({
             user: player._id,
             type: 'prize',
-            amount: Number(result.prizeWon),
+            amount: prizeWon,
             status: 'completed',
-            description: `Match winnings (Rank #${result.rank}) for lobby: ${tournament.title}`
+            description: `Winnings (Rank #${r.rank}) for: ${tournament.title}`
           });
           await transaction.save();
         }
+
+        results.push({
+          user: player._id,
+          rank: r.rank,
+          kills: r.kills,
+          prizeWon: prizeWon
+        });
       }
     }
 
-    // 5. Update tournament document results and status
     tournament.results = results;
-    tournament.winner = winnerId || (player1 ? player1._id : null);
+    tournament.winner = winnerId;
     tournament.status = 'completed';
     await tournament.save();
 
-    console.log(`[Automation Bot] Successfully resolved tournament "${tournament.title}" via automatic background trigger. Winner ID: ${winnerId}`);
+    return { success: true, msg: 'Simulation payout completed' };
   } catch (err) {
-    console.error(`[Automation Bot] Error resolving tournament ${tournamentId}:`, err.message);
+    console.error('Simulation resolve failed:', err.message);
+    return { success: false, error: err.message };
   }
 };
 
@@ -254,8 +348,8 @@ const startAutomationBot = () => {
       });
 
       for (const tournament of ongoingElapsed) {
-        console.log(`[Automation Bot] Auto-resolving elapsed ongoing tournament: "${tournament.title}" (Scheduled: ${tournament.matchDateTime})`);
-        await resolveTournamentPayout(tournament._id);
+        console.log(`[Automation Bot] Elapsed ongoing tournament detected: "${tournament.title}". Processing checks...`);
+        await checkConsensusAndPayout(tournament._id);
       }
 
       // 2. Find matches in 'upcoming' status whose start time has passed by more than 15 minutes without room credentials
@@ -266,7 +360,7 @@ const startAutomationBot = () => {
       });
 
       for (const tournament of upcomingElapsed) {
-        console.log(`[Automation Bot] Auto-cancelling inactive upcoming tournament: "${tournament.title}" (Scheduled: ${tournament.matchDateTime}). Refunding entries...`);
+        console.log(`[Automation Bot] Auto-cancelling inactive upcoming tournament: "${tournament.title}". Refunding entries...`);
         await refundTournamentPlayers(tournament, 'Cancelled: Host failed to set room details in time');
       }
 
@@ -278,6 +372,6 @@ const startAutomationBot = () => {
 
 module.exports = {
   startAutomationBot,
-  resolveTournamentPayout,
+  checkConsensusAndPayout,
   refundTournamentPlayers
 };

@@ -37,20 +37,12 @@ const TournamentSchema = new mongoose.Schema({
     winnerCount: {
       type: Number,
       default: 1,
-      enum: [1, 2, 3]
+      min: 1
     },
-    firstPlacePrize: {
-      type: Number,
-      default: 0
-    },
-    secondPlacePrize: {
-      type: Number,
-      default: 0
-    },
-    thirdPlacePrize: {
-      type: Number,
-      default: 0
-    }
+    prizes: [{
+      rank: { type: Number },
+      amount: { type: Number, default: 0 }
+    }]
   },
   slots: {
     type: Number,
@@ -60,6 +52,27 @@ const TournamentSchema = new mongoose.Schema({
   playersJoined: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  }],
+  observersJoined: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  maxObservers: {
+    type: Number,
+    default: 5
+  },
+  observerReward: {
+    type: Number,
+    default: 0
+  },
+  observerVotes: [{
+    observer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    results: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      rank: { type: Number },
+      kills: { type: Number, default: 0 }
+    }],
+    submittedAt: { type: Date, default: Date.now }
   }],
   matchDateTime: {
     type: Date,
@@ -83,6 +96,10 @@ const TournamentSchema = new mongoose.Schema({
     roomPassword: {
       type: String,
       default: ''
+    },
+    disputed: {
+      type: Boolean,
+      default: false
     }
   },
   winner: {

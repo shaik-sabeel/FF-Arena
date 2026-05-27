@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import API from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
-import { Award, Calendar, Users, MapPin, Swords, ShieldCheck, Plus, ListPlus, Send, XCircle, CheckCircle, HelpCircle } from 'lucide-react';
+import { Award, Calendar, Users, MapPin, Swords, ShieldCheck, Plus, ListPlus, Send, XCircle, CheckCircle, HelpCircle, Eye, ShieldAlert } from 'lucide-react';
 import gsap from 'gsap';
 
 const TournamentDetails = () => {
@@ -34,6 +34,53 @@ const TournamentDetails = () => {
   const [killsInputs, setKillsInputs] = useState({});
   const [botRunning, setBotRunning] = useState(false);
   const [botLogs, setBotLogs] = useState([]);
+
+  // Spectator consensus voting states
+  const [votingResults, setVotingResults] = useState([]);
+  const [submittingVote, setSubmittingVote] = useState(false);
+  const [voteSuccess, setVoteSuccess] = useState('');
+  const [voteError, setVoteError] = useState('');
+
+  const handleVoteChange = (userIndex, field, value) => {
+    setVotingResults((prev) => {
+      const updated = [...prev];
+      if (updated[userIndex]) {
+        updated[userIndex] = {
+          ...updated[userIndex],
+          [field]: value
+        };
+      }
+      return updated;
+    });
+  };
+
+  const handleVoteSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setSubmittingVote(true);
+    setVoteError('');
+    setVoteSuccess('');
+
+    try {
+      const res = await API.post(`/tournament/${id}/vote`, {
+        results: votingResults.map(r => ({
+          user: r.user,
+          rank: Number(r.rank),
+          kills: Number(r.kills)
+        }))
+      });
+      setVoteSuccess('Vote submitted successfully! Checking consensus...');
+      setTournament(res.data.tournament);
+      setTimeout(() => {
+        setVoteSuccess('');
+        fetchTournamentDetails();
+        refreshUser();
+      }, 1500);
+    } catch (err) {
+      setVoteError(err.response?.data?.msg || 'Failed to submit vote');
+    } finally {
+      setSubmittingVote(false);
+    }
+  };
 
   const handleBotResolve = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -127,6 +174,13 @@ const TournamentDetails = () => {
           prizeWon: '0'
         }));
         setRecordingResults(initialResults);
+        setVotingResults(res.data.playersJoined.map((player) => ({
+          user: player._id,
+          username: player.username,
+          freeFireName: player.freeFireName,
+          rank: '2',
+          kills: '0'
+        })));
       }
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to load tournament data');
@@ -150,7 +204,7 @@ const TournamentDetails = () => {
     }
   }, [tournament]);
 
-  const handleJoin = async () => {
+  const handleJoin = async (role = 'player') => {
     if (!user) {
       navigate('/login');
       return;
@@ -161,7 +215,7 @@ const TournamentDetails = () => {
       return;
     }
 
-    if (user.walletBalance < tournament.entryFee) {
+    if (role === 'player' && user.walletBalance < tournament.entryFee) {
       setError('Insufficient wallet balance. Please add cash in wallet tab.');
       return;
     }
@@ -169,10 +223,10 @@ const TournamentDetails = () => {
     setJoining(true);
     setError('');
     try {
-      const res = await API.post(`/tournament/${id}/join`);
+      const res = await API.post(`/tournament/${id}/join`, { role });
       setTournament(res.data.tournament);
       syncWalletBalance(res.data.walletBalance);
-      setJoinSuccess('Successfully joined this match lobby!');
+      setJoinSuccess(`Successfully joined this match lobby as a ${role === 'observer' ? 'Spectator' : 'Player'}!`);
       
       // Clear success alert after time
       setTimeout(() => setJoinSuccess(''), 2500);
@@ -283,11 +337,23 @@ const TournamentDetails = () => {
   }
 
   const userId = user?.id || user?._id;
-  const hasJoined = tournament.playersJoined?.some((p) => {
+  const hasJoinedPlayer = tournament.playersJoined?.some((p) => {
     const pId = p._id || p;
     return pId.toString() === userId?.toString();
   });
+  const hasJoinedObserver = tournament.observersJoined?.some((o) => {
+    const oId = o._id || o;
+    return oId.toString() === userId?.toString();
+  });
+  const hasJoined = hasJoinedPlayer || hasJoinedObserver;
+  const hasVoted = tournament.observerVotes?.some((v) => {
+    const vObs = v.observer?._id || v.observer;
+    return vObs?.toString() === userId?.toString();
+  });
   const slotsLeft = tournament.slots - (tournament.playersJoined?.length || 0);
+  const maxObservers = tournament.maxObservers || 5;
+  const observerSlotsLeft = maxObservers - (tournament.observersJoined?.length || 0);
+  const isAssignedObserver = user?.isObserver === true;
   const isHost = (tournament.host?._id || tournament.host)?.toString() === userId?.toString();
   const isAdmin = user?.role === 'admin';
   const canManage = isHost || isAdmin;
@@ -461,10 +527,17 @@ const TournamentDetails = () => {
               </div>
             ) : hasJoined ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-center space-x-2 rounded-xl bg-green-500/15 border border-green-500/30 p-3 text-xs font-extrabold text-green-400">
-                  <ShieldCheck size={16} />
-                  <span>REGISTERED PLAYER</span>
-                </div>
+                {hasJoinedPlayer ? (
+                  <div className="flex items-center justify-center space-x-2 rounded-xl bg-green-500/15 border border-green-500/30 p-3 text-xs font-extrabold text-green-400">
+                    <ShieldCheck size={16} />
+                    <span>REGISTERED PLAYER</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center space-x-2 rounded-xl bg-gaming-blue/15 border border-gaming-blue/30 p-3 text-xs font-extrabold text-gaming-blue">
+                    <Eye size={16} />
+                    <span>REGISTERED SPECTATOR</span>
+                  </div>
+                )}
                 
                 {/* Display room details if ongoing/started */}
                 {tournament.status === 'ongoing' && tournament.roomDetails?.roomId ? (
@@ -487,6 +560,17 @@ const TournamentDetails = () => {
                     <p className="text-[9px] leading-relaxed text-gaming-text italic mt-1 border-t border-gaming-border pt-1">
                       Enter credentials in your Free Fire game client under Custom Mode.
                     </p>
+                    {tournament.roomDetails?.disputed && (
+                      <div className="mt-2 rounded-lg bg-red-500/10 border border-red-500/30 p-2.5 text-[10px] font-bold text-red-400 flex items-start space-x-1">
+                        <ShieldAlert size={14} className="flex-shrink-0 mt-0.5 text-red-400" />
+                        <div>
+                          <p className="uppercase tracking-wider font-extrabold">Observer Voting Conflict</p>
+                          <p className="font-normal text-gaming-text mt-0.5 leading-normal">
+                            Spectators submitted conflicting results. Payout is temporarily locked until resolved.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl bg-gaming-dark/60 p-3 text-center text-[10px] font-semibold text-gaming-text">
@@ -494,20 +578,145 @@ const TournamentDetails = () => {
                   </div>
                 )}
               </div>
-            ) : slotsLeft <= 0 ? (
-              <button disabled className="w-full rounded-xl bg-gaming-border py-3 text-xs font-bold text-gaming-text cursor-not-allowed">
-                LOBBY SLOTS FULL
-              </button>
             ) : (
-              <button
-                onClick={handleJoin}
-                disabled={joining}
-                className="w-full rounded-xl bg-gaming-accent py-3.5 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
-              >
-                {joining ? 'Registering...' : 'REGISTER FOR MATCH'}
-              </button>
+              <div className="space-y-3">
+                {isAssignedObserver ? (
+                  <>
+                    <p className="text-[10px] text-center font-bold text-gaming-blue uppercase tracking-wider mb-2">
+                      Choose your role for this match
+                    </p>
+                    {slotsLeft > 0 ? (
+                      <button
+                        onClick={() => handleJoin('player')}
+                        disabled={joining}
+                        className="w-full rounded-xl bg-gaming-accent py-3.5 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                      >
+                        <Swords size={14} />
+                        <span>JOIN AS PLAYER (₹{tournament.entryFee})</span>
+                      </button>
+                    ) : (
+                      <button disabled className="w-full rounded-xl bg-gaming-border py-3 text-xs font-bold text-gaming-text cursor-not-allowed">
+                        PLAYER SLOTS FULL
+                      </button>
+                    )}
+
+                    {observerSlotsLeft > 0 ? (
+                      <button
+                        onClick={() => handleJoin('observer')}
+                        disabled={joining}
+                        className="w-full rounded-xl border border-gaming-blue bg-gaming-blue/10 py-3.5 text-sm font-extrabold text-gaming-blue hover:bg-gaming-blue/20 transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                      >
+                        <Eye size={14} />
+                        <span>JOIN AS SPECTATOR (Reward: ₹{tournament.observerReward})</span>
+                      </button>
+                    ) : (
+                      <button disabled className="w-full rounded-xl bg-gaming-border py-3 text-xs font-bold text-gaming-text cursor-not-allowed">
+                        SPECTATOR SLOTS FULL
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {slotsLeft > 0 ? (
+                      <button
+                        onClick={() => handleJoin('player')}
+                        disabled={joining}
+                        className="w-full rounded-xl bg-gaming-accent py-3.5 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                      >
+                        <Swords size={14} />
+                        <span>JOIN MATCH</span>
+                      </button>
+                    ) : (
+                      <button disabled className="w-full rounded-xl bg-gaming-border py-3 text-xs font-bold text-gaming-text cursor-not-allowed">
+                        LOBBY SLOTS FULL
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
+
+          {/* Spectator Consensus Voting Console */}
+          {hasJoinedObserver && user?.isObserver && tournament.status === 'ongoing' && (
+            <div className="glass-panel border-t-2 border-t-gaming-blue rounded-2xl border border-gaming-border p-5 space-y-4 shadow-neon">
+              <h3 className="text-xs font-black uppercase tracking-wider text-gaming-blue border-b border-gaming-border pb-2 flex items-center">
+                <Eye size={13} className="mr-1.5" />
+                SPECTATOR RESOLUTION DESK
+              </h3>
+
+              {hasVoted ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-green-400">
+                    ✓ Your rank results vote is locked.
+                  </p>
+                  <p className="text-[10px] leading-relaxed text-gaming-text">
+                    The payout bot is monitoring the observer consensus. Once all observers vote in agreement, the host's wallet will automatically be debited, and players/spectators credited.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleVoteSubmit} className="space-y-4">
+                  <p className="text-[10px] font-bold text-gaming-text leading-relaxed">
+                    Submit the match scoreboard results. To trigger payouts, all spectators must vote with 100% identical data.
+                  </p>
+
+                  {voteError && (
+                    <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-[10px] font-bold text-red-400">
+                      {voteError}
+                    </div>
+                  )}
+
+                  {voteSuccess && (
+                    <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-2.5 text-[10px] font-bold text-green-400">
+                      {voteSuccess}
+                    </div>
+                  )}
+
+                  <div className="max-h-60 overflow-y-auto pr-1 space-y-3.5 scrollbar-thin">
+                    {votingResults.map((playerResult, idx) => (
+                      <div key={playerResult.user} className="rounded-xl bg-gaming-dark/40 p-2.5 border border-gaming-border/60">
+                        <p className="text-xs font-black text-white truncate mb-2">
+                          @{playerResult.username} <span className="text-[10px] font-medium text-gaming-text">({playerResult.freeFireName})</span>
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="mb-0.5 block text-[9px] uppercase tracking-wider text-gaming-text font-black">Rank</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={playerResult.rank}
+                              onChange={(e) => handleVoteChange(idx, 'rank', e.target.value)}
+                              className="w-full rounded-lg border border-gaming-border/60 bg-gaming-card py-1 px-2 text-xs font-semibold text-white outline-none focus:border-gaming-blue"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-[9px] uppercase tracking-wider text-gaming-text font-black">Kills</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={playerResult.kills}
+                              onChange={(e) => handleVoteChange(idx, 'kills', e.target.value)}
+                              className="w-full rounded-lg border border-gaming-border/60 bg-gaming-card py-1 px-2 text-xs font-semibold text-white outline-none focus:border-gaming-blue"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submittingVote}
+                    className="w-full rounded-xl bg-gaming-blue py-2.5 text-xs font-black text-black transition-all duration-300 hover:shadow-[0_0_15px_rgba(53,213,250,0.4)] cursor-pointer disabled:opacity-50"
+                  >
+                    {submittingVote ? 'Submitting Vote...' : 'Submit Consensus Vote'}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
 
           {/* Host Administration Console */}
           {canManage && (

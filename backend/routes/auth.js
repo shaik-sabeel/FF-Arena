@@ -4,46 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const User = require('../models/User');
-const nodemailer = require('nodemailer');
-
-// Email dispatcher utility helper
-const sendEmail = async (to, subject, text, html) => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log(`\n======================================================
-[MOCK EMAIL DISPATCH LOG]
-------------------------------------------------------
-To:      ${to}
-Subject: ${subject}
-Content: ${text}
-======================================================\n`);
-    return { mock: true };
-  }
-
-  try {
-    const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    const mailOptions = {
-      from: `"BL Battle Support" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      text,
-      html
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log('[Email Dispatch] Sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (err) {
-    console.error('[Email Dispatch] Failed to send email:', err.message);
-    return { success: false, error: err.message };
-  }
-};
+const sendEmail = require('../utils/mailer');
 
 
 // @route   POST api/auth/register

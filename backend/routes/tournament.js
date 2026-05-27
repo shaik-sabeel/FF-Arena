@@ -4,12 +4,15 @@ const auth = require('../middleware/auth');
 const Tournament = require('../models/Tournament');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const sendEmail = require('../utils/mailer');
+const { checkConsensusAndPayout } = require('../services/automationService');
+
 
 // @route   POST api/tournament/create
 // @desc    Create a tournament (Host/Admin only)
 // @access  Private
 router.post('/create', auth, async (req, res) => {
-  const { title, description, gameMode, map, entryFee, prizePool, slots, matchDateTime, prizeDistribution } = req.body;
+  const { title, description, gameMode, map, entryFee, prizePool, slots, matchDateTime, prizeDistribution, maxObservers, observerReward } = req.body;
 
   try {
     const userObj = await User.findById(req.user.id);
@@ -37,11 +40,11 @@ router.post('/create', auth, async (req, res) => {
       slots: Number(slots),
       matchDateTime,
       host: req.user.id,
+      maxObservers: maxObservers ? Number(maxObservers) : 5,
+      observerReward: observerReward ? Number(observerReward) : 0,
       prizeDistribution: prizeDistribution || {
         winnerCount: 1,
-        firstPlacePrize: Number(prizePool),
-        secondPlacePrize: 0,
-        thirdPlacePrize: 0
+        prizes: [{ rank: 1, amount: Number(prizePool) }]
       }
     });
 
@@ -105,14 +108,24 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Tournament has already started or completed' });
     }
 
-    // Check if slots available
-    if (tournament.playersJoined.length >= tournament.slots) {
-      return res.status(400).json({ msg: 'Tournament slots are full' });
+    const { role = 'player' } = req.body;
+    if (role !== 'player' && role !== 'observer') {
+      return res.status(400).json({ msg: 'Invalid registration role' });
     }
 
-    // Check if already joined
-    if (tournament.playersJoined.some(pId => pId.toString() === req.user.id)) {
-      return res.status(400).json({ msg: 'You have already joined this tournament' });
+    // Check if already registered
+    const isRegisteredPlayer = tournament.playersJoined.some(pId => pId.toString() === req.user.id);
+    const isRegisteredObserver = tournament.observersJoined && tournament.observersJoined.some(pId => pId.toString() === req.user.id);
+    
+    if (isRegisteredPlayer || isRegisteredObserver) {
+      return res.status(400).json({ msg: 'You have already registered for this tournament' });
+    }
+
+    if (role === 'player') {
+      // Check if slots available
+      if (tournament.playersJoined.length >= tournament.slots) {
+        return res.status(400).json({ msg: 'Tournament player slots are full' });
+      }
     }
 
     const user = await User.findById(req.user.id);
@@ -120,57 +133,75 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(404).json({ msg: 'User not found' });
     }
 
+    if (role === 'observer') {
+      if (!user.isObserver) {
+        return res.status(403).json({ msg: 'Access denied: Only users assigned as observers by Host/Admin can join as observers.' });
+      }
+      // Check if observer slots available
+      const maxObs = tournament.maxObservers || 5;
+      const currentObs = tournament.observersJoined ? tournament.observersJoined.length : 0;
+      if (currentObs >= maxObs) {
+        return res.status(400).json({ msg: 'Tournament observer slots are full' });
+      }
+    }
+
     // Validate in-game tags
     if (!user.freeFireId || !user.freeFireName) {
       return res.status(400).json({ msg: 'Please configure your Free Fire Game ID and IGN in Profile settings before joining.' });
     }
 
-    // Check wallet balance
-    if (user.walletBalance < tournament.entryFee) {
-      return res.status(400).json({ msg: 'Insufficient wallet balance. Please deposit funds.' });
-    }
-
-    // Process payment and registration
-    user.walletBalance -= tournament.entryFee;
-    user.stats.matchesPlayed += 1;
-
-    // Save transaction record for player
-    const transaction = new Transaction({
-      user: req.user.id,
-      type: 'entry_fee',
-      amount: tournament.entryFee,
-      status: 'completed',
-      description: `Entry fee for tournament: ${tournament.title}`
-    });
-    await transaction.save();
-
-    // Credit host's wallet
-    const hostUser = await User.findById(tournament.host);
-    if (hostUser) {
-      hostUser.walletBalance += tournament.entryFee;
-      await hostUser.save();
-
-      // Save transaction record for host income
-      if (tournament.entryFee > 0) {
-        const hostTransaction = new Transaction({
-          user: hostUser._id,
-          type: 'deposit',
-          amount: tournament.entryFee,
-          status: 'completed',
-          description: `Entry fee income from player: ${user.username} for tournament: ${tournament.title}`
-        });
-        await hostTransaction.save();
+    if (role === 'player') {
+      // Check wallet balance
+      if (user.walletBalance < tournament.entryFee) {
+        return res.status(400).json({ msg: 'Insufficient wallet balance. Please deposit funds.' });
       }
+
+      // Process payment and registration
+      user.walletBalance -= tournament.entryFee;
+      user.stats.matchesPlayed += 1;
+
+      // Save transaction record for player
+      const transaction = new Transaction({
+        user: req.user.id,
+        type: 'entry_fee',
+        amount: tournament.entryFee,
+        status: 'completed',
+        description: `Entry fee for tournament: ${tournament.title}`
+      });
+      await transaction.save();
+
+      // Credit host's wallet
+      const hostUser = await User.findById(tournament.host);
+      if (hostUser) {
+        hostUser.walletBalance += tournament.entryFee;
+        await hostUser.save();
+
+        // Save transaction record for host income
+        if (tournament.entryFee > 0) {
+          const hostTransaction = new Transaction({
+            user: hostUser._id,
+            type: 'deposit',
+            amount: tournament.entryFee,
+            status: 'completed',
+            description: `Entry fee income from player: ${user.username} for tournament: ${tournament.title}`
+          });
+          await hostTransaction.save();
+        }
+      }
+
+      tournament.playersJoined.push(req.user.id);
+    } else {
+      // Register as observer (free registration)
+      tournament.observersJoined.push(req.user.id);
     }
 
-    tournament.playersJoined.push(req.user.id);
-    
     await user.save();
     await tournament.save();
 
     const updatedTournament = await Tournament.findById(req.params.id)
       .populate('host', 'username freeFireName')
-      .populate('playersJoined', 'username freeFireName stats');
+      .populate('playersJoined', 'username freeFireName stats')
+      .populate('observersJoined', 'username freeFireName stats');
 
     res.json({
       tournament: updatedTournament,
@@ -194,16 +225,60 @@ router.put('/:id/room', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Tournament not found' });
     }
 
-    // Verify host authority
-    if (tournament.host.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(401).json({ msg: 'Unauthorized: Only the host can add room details' });
+    // Verify host or registered observer authority
+    const isHost = tournament.host.toString() === req.user.id;
+    const isObserver = tournament.observersJoined && tournament.observersJoined.some(oId => oId.toString() === req.user.id);
+    if (!isHost && !isObserver && req.user.role !== 'admin') {
+      return res.status(401).json({ msg: 'Unauthorized: Only the host or registered spectator/observer can add room details' });
     }
 
     tournament.roomDetails = { roomId, roomPassword };
     tournament.status = 'ongoing'; // Mark as ongoing when room is ready
     await tournament.save();
 
-    res.json(tournament);
+    // Fetch tournament with populated player and observer emails to send notifications
+    const tWithUsers = await Tournament.findById(req.params.id)
+      .populate('playersJoined', 'email username')
+      .populate('observersJoined', 'email username');
+
+    if (tWithUsers) {
+      const emailSubject = `Match Room Credentials: ${tWithUsers.title}`;
+      const emailText = `Hello,\n\nThe custom room details for the tournament "${tWithUsers.title}" are now available:\n\nRoom ID: ${roomId}\nPassword: ${roomPassword}\n\nPlease enter these credentials in your Garena Free Fire client under Custom Mode.\n\nBest regards,\nThe BL Battle Team`;
+      
+      const emailHtml = `<div style="font-family: sans-serif; background-color: #0b0e11; color: #ffffff; padding: 20px; border-radius: 10px; max-width: 600px; border: 1px solid #1f2731;">
+        <h2 style="color: #35d5fa; margin-top: 0;">Lobby Custom Room Credentials</h2>
+        <p style="color: #a0aab5;">Match room details for <strong>${tWithUsers.title}</strong> are now active:</p>
+        <div style="background-color: #1a222d; border: 1px solid #35d5fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0; color: #ffffff; font-size: 14px;"><strong>Room ID:</strong> <span style="font-family: monospace; color: #35d5fa; font-size: 16px; font-weight: bold;">${roomId}</span></p>
+          <p style="margin: 0; color: #ffffff; font-size: 14px;"><strong>Password:</strong> <span style="font-family: monospace; color: #35d5fa; font-size: 16px; font-weight: bold;">${roomPassword}</span></p>
+        </div>
+        <p style="color: #a0aab5; font-size: 12px;">Open the Garena Free Fire client, search for the Room ID in Custom Mode, enter the password, and join the lobby. Get ready for battle!</p>
+        <hr style="border: 0; border-top: 1px solid #1f2731; margin: 20px 0;">
+        <p style="color: #35d5fa; font-size: 11px;">Best regards,<br><strong style="color: #ffffff;">The BL Battle Team</strong></p>
+      </div>`;
+
+      // Dispatch to players
+      if (tWithUsers.playersJoined) {
+        for (const player of tWithUsers.playersJoined) {
+          if (player.email) {
+            sendEmail(player.email, emailSubject, emailText, emailHtml)
+              .catch(e => console.error(`Failed to send credentials to player ${player.username}:`, e.message));
+          }
+        }
+      }
+
+      // Dispatch to observers
+      if (tWithUsers.observersJoined) {
+        for (const observer of tWithUsers.observersJoined) {
+          if (observer.email) {
+            sendEmail(observer.email, emailSubject, emailText, emailHtml)
+              .catch(e => console.error(`Failed to send credentials to observer ${observer.username}:`, e.message));
+          }
+        }
+      }
+    }
+
+    res.json(tWithUsers || tournament);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -505,6 +580,216 @@ router.put('/:id/resolve', auth, async (req, res) => {
   } catch (err) {
     console.error('Automated bot resolve error:', err.message);
     res.status(500).send('Server Error resolving lobby payouts');
+  }
+});
+
+// @route   POST api/tournament/:id/vote
+// @desc    Submit observer results and trigger automatic payout distribution
+// @access  Private (Observers only)
+router.post('/:id/vote', auth, async (req, res) => {
+  const { results } = req.body;
+
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ msg: 'Tournament not found' });
+    }
+
+    if (tournament.status !== 'ongoing') {
+      return res.status(400).json({ msg: 'Tournament is not in ongoing state' });
+    }
+
+    // Check if the user is registered as an observer
+    const isObserver = tournament.observersJoined && tournament.observersJoined.some(oId => oId.toString() === req.user.id);
+    if (!isObserver) {
+      return res.status(403).json({ msg: 'Access denied: Only registered observers/spectators can submit votes' });
+    }
+
+    // Fetch the observer user to ensure they are assigned (isObserver === true)
+    const user = await User.findById(req.user.id);
+    if (!user || !user.isObserver) {
+      return res.status(403).json({ msg: 'Access denied: Only assigned observers can access observer features' });
+    }
+
+    // Check if observer has already voted
+    const hasVoted = tournament.observerVotes && tournament.observerVotes.some(v => v.observer.toString() === req.user.id);
+    if (hasVoted) {
+      return res.status(400).json({ msg: 'You have already submitted results for this tournament' });
+    }
+
+    // Find 1st and 2nd place winners from submitted results
+    const firstPlace = results.find(r => Number(r.rank) === 1);
+    const secondPlace = results.find(r => Number(r.rank) === 2);
+
+    if (!firstPlace || !secondPlace) {
+      return res.status(400).json({ msg: 'Please specify both 1st and 2nd place winners' });
+    }
+
+    // Fetch Host to verify balance
+    const host = await User.findById(tournament.host);
+    if (!host) {
+      return res.status(404).json({ msg: 'Host account not found' });
+    }
+
+    // Determine prize values
+    const prizesMap = {};
+    if (tournament.prizeDistribution?.prizes && tournament.prizeDistribution.prizes.length > 0) {
+      tournament.prizeDistribution.prizes.forEach(p => {
+        prizesMap[p.rank] = p.amount;
+      });
+    } else {
+      prizesMap[1] = tournament.prizePool;
+      prizesMap[2] = 0;
+    }
+
+    const prize1 = prizesMap[1] || 0;
+    const prize2 = prizesMap[2] || 0;
+    const obsReward = tournament.observerReward || 0;
+
+    const totalDeduction = tournament.prizePool + obsReward;
+
+    if (host.walletBalance < totalDeduction) {
+      return res.status(400).json({
+        msg: `Insufficient Host Balance: Host wallet has ₹${host.walletBalance.toFixed(2)}, but ₹${totalDeduction.toFixed(2)} is required to resolve payouts.`
+      });
+    }
+
+    // Deduct Host Wallet
+    host.walletBalance -= totalDeduction;
+    await host.save();
+
+    // Log Host Payout deduction
+    const hostTransaction = new Transaction({
+      user: host._id,
+      type: 'withdraw',
+      amount: totalDeduction,
+      status: 'completed',
+      description: `Prize pool (₹${tournament.prizePool}) + Spectator reward (₹${obsReward}) deduction for match: ${tournament.title}`
+    });
+    await hostTransaction.save();
+
+    // Process Winner 1
+    const p1 = await User.findById(firstPlace.user);
+    if (p1) {
+      p1.stats.kills += Number(firstPlace.kills || 0);
+      p1.stats.earnings += prize1;
+      p1.walletBalance += prize1;
+      p1.stats.matchesWon += 1;
+      await p1.save();
+
+      if (prize1 > 0) {
+        const transaction = new Transaction({
+          user: p1._id,
+          type: 'prize',
+          amount: prize1,
+          status: 'completed',
+          description: `Match winnings (Rank #1) for lobby: ${tournament.title}`
+        });
+        await transaction.save();
+      }
+    }
+
+    // Process Winner 2
+    const p2 = await User.findById(secondPlace.user);
+    if (p2) {
+      p2.stats.kills += Number(secondPlace.kills || 0);
+      p2.stats.earnings += prize2;
+      p2.walletBalance += prize2;
+      p2.stats.matchesLost += 1;
+      await p2.save();
+
+      if (prize2 > 0) {
+        const transaction = new Transaction({
+          user: p2._id,
+          type: 'prize',
+          amount: prize2,
+          status: 'completed',
+          description: `Match winnings (Rank #2) for lobby: ${tournament.title}`
+        });
+        await transaction.save();
+      }
+    }
+
+    // Process Observer
+    user.walletBalance += obsReward;
+    await user.save();
+
+    if (obsReward > 0) {
+      const transaction = new Transaction({
+        user: user._id,
+        type: 'prize',
+        amount: obsReward,
+        status: 'completed',
+        description: `Observer reward for match: ${tournament.title}`
+      });
+      await transaction.save();
+    }
+
+    // Process stats for other players (increment matchesLost)
+    const winnersList = [firstPlace.user.toString(), secondPlace.user.toString()];
+    for (const registeredPlayerId of tournament.playersJoined) {
+      if (!winnersList.includes(registeredPlayerId.toString())) {
+        const p = await User.findById(registeredPlayerId);
+        if (p) {
+          p.stats.matchesLost += 1;
+          await p.save();
+        }
+      }
+    }
+
+    // Record the observer's vote
+    if (!tournament.observerVotes) {
+      tournament.observerVotes = [];
+    }
+    tournament.observerVotes.push({
+      observer: req.user.id,
+      results: results.map(r => ({
+        user: r.user,
+        rank: Number(r.rank),
+        kills: Number(r.kills || 0)
+      }))
+    });
+
+    // Mark complete
+    tournament.results = [
+      { user: firstPlace.user, rank: 1, kills: Number(firstPlace.kills || 0), prizeWon: prize1 },
+      { user: secondPlace.user, rank: 2, kills: Number(secondPlace.kills || 0), prizeWon: prize2 }
+    ];
+    // Add other players to results schema
+    results.forEach(r => {
+      if (Number(r.rank) > 2) {
+        const pReward = prizesMap[r.rank] || 0;
+        tournament.results.push({
+          user: r.user,
+          rank: Number(r.rank),
+          kills: Number(r.kills || 0),
+          prizeWon: pReward
+        });
+      }
+    });
+
+    tournament.winner = firstPlace.user;
+    tournament.status = 'completed';
+    if (tournament.roomDetails) {
+      tournament.roomDetails.disputed = false;
+    }
+    await tournament.save();
+
+    const updatedTournament = await Tournament.findById(req.params.id)
+      .populate('host', 'username freeFireName')
+      .populate('playersJoined', 'username freeFireName stats')
+      .populate('observersJoined', 'username freeFireName stats')
+      .populate('winner', 'username freeFireName')
+      .populate('results.user', 'username freeFireName');
+
+    res.json({
+      success: true,
+      msg: 'Results submitted and rewards distributed successfully!',
+      tournament: updatedTournament
+    });
+  } catch (err) {
+    console.error('Vote/results submission error:', err.message);
+    res.status(500).send('Server Error submitting results');
   }
 });
 

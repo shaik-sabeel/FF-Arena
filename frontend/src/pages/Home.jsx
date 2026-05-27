@@ -3,7 +3,7 @@ import API from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import TournamentCard from '../components/TournamentCard';
 import SparkParticles from '../components/SparkParticles';
-import { Gamepad2, Plus, Calendar, Coins, ShieldAlert, Users, Award, Map, RefreshCw } from 'lucide-react';
+import { Gamepad2, Plus, Calendar, Coins, ShieldAlert, Users, Award, Map, RefreshCw, Eye } from 'lucide-react';
 import gsap from 'gsap';
 
 const Home = () => {
@@ -37,23 +37,64 @@ const Home = () => {
     slots: '48',
     matchDateTime: '',
     winnerCount: '1',
-    firstPlacePrize: '100',
-    secondPlacePrize: '0',
-    thirdPlacePrize: '0'
+    maxObservers: '5',
+    observerReward: '0',
+    prizes: [{ rank: 1, amount: 100 }]
   });
 
   // Automatically calculate total prize pool from prize allocations
   useEffect(() => {
-    const first = Number(formData.firstPlacePrize || 0);
-    const second = Number(formData.winnerCount) >= 2 ? Number(formData.secondPlacePrize || 0) : 0;
-    const third = Number(formData.winnerCount) === 3 ? Number(formData.thirdPlacePrize || 0) : 0;
-    const total = first + second + third;
-    
-    setFormData((prev) => ({
-      ...prev,
-      prizePool: total.toString()
-    }));
-  }, [formData.winnerCount, formData.firstPlacePrize, formData.secondPlacePrize, formData.thirdPlacePrize]);
+    if (formData.prizes) {
+      const total = formData.prizes.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      setFormData((prev) => ({
+        ...prev,
+        prizePool: total.toString()
+      }));
+    }
+  }, [formData.prizes]);
+
+  const decrementWinnerCount = () => {
+    setFormData(prev => {
+      const newCount = Math.max(1, Number(prev.winnerCount) - 1);
+      const newPrizes = prev.prizes ? prev.prizes.slice(0, newCount) : [{ rank: 1, amount: 100 }];
+      while (newPrizes.length < newCount) {
+        newPrizes.push({ rank: newPrizes.length + 1, amount: 0 });
+      }
+      return {
+        ...prev,
+        winnerCount: newCount.toString(),
+        prizes: newPrizes
+      };
+    });
+  };
+
+  const incrementWinnerCount = () => {
+    setFormData(prev => {
+      const newCount = Number(prev.winnerCount) + 1;
+      const newPrizes = prev.prizes ? [...prev.prizes] : [{ rank: 1, amount: 100 }];
+      while (newPrizes.length < newCount) {
+        newPrizes.push({ rank: newPrizes.length + 1, amount: 0 });
+      }
+      return {
+        ...prev,
+        winnerCount: newCount.toString(),
+        prizes: newPrizes
+      };
+    });
+  };
+
+  const handlePrizeAmountChange = (index, value) => {
+    setFormData(prev => {
+      const newPrizes = prev.prizes ? [...prev.prizes] : [];
+      if (newPrizes[index]) {
+        newPrizes[index] = { ...newPrizes[index], amount: value };
+      }
+      return {
+        ...prev,
+        prizes: newPrizes
+      };
+    });
+  };
 
   const cardsContainerRef = useRef(null);
   const heroRef = useRef(null);
@@ -172,11 +213,14 @@ const Home = () => {
           const [hour, minute] = timePart.split(':').map(Number);
           return new Date(year, month - 1, day, hour, minute).toISOString();
         })(),
+        maxObservers: Number(formData.maxObservers || 0),
+        observerReward: Number(formData.observerReward || 0),
         prizeDistribution: {
           winnerCount: Number(formData.winnerCount),
-          firstPlacePrize: Number(formData.firstPlacePrize || 0),
-          secondPlacePrize: Number(formData.winnerCount) >= 2 ? Number(formData.secondPlacePrize || 0) : 0,
-          thirdPlacePrize: Number(formData.winnerCount) === 3 ? Number(formData.thirdPlacePrize || 0) : 0
+          prizes: formData.prizes.map(p => ({
+            rank: p.rank,
+            amount: Number(p.amount)
+          }))
         }
       };
 
@@ -192,9 +236,9 @@ const Home = () => {
         slots: '48',
         matchDateTime: '',
         winnerCount: '1',
-        firstPlacePrize: '100',
-        secondPlacePrize: '0',
-        thirdPlacePrize: '0'
+        maxObservers: '5',
+        observerReward: '0',
+        prizes: [{ rank: 1, amount: 100 }]
       });
       setTimeout(() => {
         setShowHostForm(false);
@@ -205,6 +249,38 @@ const Home = () => {
       setHostError(err.response?.data?.msg || 'Failed to create tournament.');
     } finally {
       setSubmittingHost(false);
+    }
+  };
+
+  // Observer role management states
+  const [showObserverManager, setShowObserverManager] = useState(false);
+  const [usersList, setUsersList] = useState([]);
+  const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [managerError, setManagerError] = useState('');
+
+  const handleManageObserversClick = async () => {
+    setShowObserverManager(true);
+    setManagerError('');
+    setFetchingUsers(true);
+    try {
+      const res = await API.get('/user/all');
+      setUsersList(res.data);
+    } catch (err) {
+      setManagerError(err.response?.data?.msg || 'Failed to fetch users');
+    } finally {
+      setFetchingUsers(false);
+    }
+  };
+
+  const handleToggleObserver = async (userId) => {
+    try {
+      const res = await API.put(`/user/${userId}/toggle-observer`);
+      if (res.data.success) {
+        setUsersList(prev => prev.map(u => u._id === userId ? { ...u, isObserver: res.data.user.isObserver } : u));
+      }
+    } catch (err) {
+      setManagerError(err.response?.data?.msg || 'Failed to update observer status');
     }
   };
 
@@ -273,13 +349,22 @@ const Home = () => {
 
             <div className="mt-6 flex flex-wrap gap-4">
               {user && (user.role === 'host' || user.role === 'admin') && (
-                <button
-                  onClick={handleHostClick}
-                  className="flex items-center space-x-2 rounded-xl bg-gradient-fire px-5 py-3 text-xs font-extrabold text-white shadow-neon-orange hover:shadow-neon-orange-hover hover:scale-105 transition-all duration-300"
-                >
-                  <Plus size={16} />
-                  <span>Host Tournament</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleHostClick}
+                    className="flex items-center space-x-2 rounded-xl bg-gradient-fire px-5 py-3 text-xs font-extrabold text-white shadow-neon-orange hover:shadow-neon-orange-hover hover:scale-105 transition-all duration-300"
+                  >
+                    <Plus size={16} />
+                    <span>Host Tournament</span>
+                  </button>
+                  <button
+                    onClick={handleManageObserversClick}
+                    className="flex items-center space-x-2 rounded-xl border border-gaming-blue bg-gaming-blue/10 px-5 py-3 text-xs font-extrabold text-gaming-blue hover:bg-gaming-blue/20 hover:scale-105 transition-all duration-300"
+                  >
+                    <Eye size={16} />
+                    <span>Manage Observers</span>
+                  </button>
+                </>
               )}
               <button
                 onClick={() => {
@@ -471,69 +556,79 @@ const Home = () => {
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text">
                   Winner Slots to Reward
                 </label>
-                <select
-                  name="winnerCount"
-                  value={formData.winnerCount}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-gaming-border bg-gaming-card py-2.5 px-3 text-sm font-medium text-white outline-none focus:border-gaming-accent"
-                >
-                  <option value="1">1 Player</option>
-                  <option value="2">2 Players</option>
-                  <option value="3">3 Players</option>
-                </select>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={decrementWinnerCount}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-gaming-border bg-gaming-card text-lg font-bold text-white hover:border-gaming-accent hover:text-gaming-accent transition-colors"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${formData.winnerCount} Player${Number(formData.winnerCount) > 1 ? 's' : ''}`}
+                    className="h-10 w-full rounded-xl border border-gaming-border bg-gaming-dark/60 text-center text-sm font-semibold text-white outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={incrementWinnerCount}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-gaming-border bg-gaming-card text-lg font-bold text-white hover:border-gaming-accent hover:text-gaming-accent transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
+
+              {formData.prizes && formData.prizes.map((prize, idx) => (
+                <div key={prize.rank}>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
+                    <Award size={13} className={`mr-1 ${idx === 0 ? 'text-gaming-accent' : idx === 1 ? 'text-gaming-blue' : idx === 2 ? 'text-gaming-yellow' : 'text-gaming-text'}`} />
+                    Rank #{prize.rank} Prize (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={prize.amount}
+                    onChange={(e) => handlePrizeAmountChange(idx, e.target.value)}
+                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                    required
+                  />
+                </div>
+              ))}
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-                  <Award size={13} className="mr-1 text-gaming-accent" />
-                  1st Place Prize (₹)
+                  <Users size={13} className="mr-1 text-gaming-accent" />
+                  Max Observers
                 </label>
                 <input
                   type="number"
-                  name="firstPlacePrize"
-                  min="5"
-                  value={formData.firstPlacePrize}
+                  name="maxObservers"
+                  min="0"
+                  max="10"
+                  value={formData.maxObservers}
                   onChange={handleInputChange}
                   className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
                   required
                 />
               </div>
 
-              {Number(formData.winnerCount) >= 2 && (
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-                    <Award size={13} className="mr-1 text-gaming-blue" />
-                    2nd Place Prize (₹)
-                  </label>
-                  <input
-                    type="number"
-                    name="secondPlacePrize"
-                    min="0"
-                    value={formData.secondPlacePrize}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-blue"
-                    required
-                  />
-                </div>
-              )}
-
-              {Number(formData.winnerCount) === 3 && (
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
-                    <Award size={13} className="mr-1 text-gaming-yellow" />
-                    3rd Place Prize (₹)
-                  </label>
-                  <input
-                    type="number"
-                    name="thirdPlacePrize"
-                    min="0"
-                    value={formData.thirdPlacePrize}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-yellow"
-                    required
-                  />
-                </div>
-              )}
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
+                  <Coins size={13} className="mr-1 text-gaming-accent" />
+                  Observer Reward (₹)
+                </label>
+                <input
+                  type="number"
+                  name="observerReward"
+                  min="0"
+                  value={formData.observerReward}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                  required
+                />
+              </div>
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
@@ -663,6 +758,78 @@ const Home = () => {
             {filteredTournaments.map((tournament) => (
               <TournamentCard key={tournament._id} tournament={tournament} />
             ))}
+          </div>
+        )}
+        {/* Observer Manager Modal */}
+        {showObserverManager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <div className="glass-panel w-full max-w-md rounded-2xl border border-gaming-border bg-gaming-dark/95 p-6 shadow-neon">
+              <div className="mb-4 flex items-center justify-between border-b border-gaming-border pb-3">
+                <h3 className="text-sm font-bold text-white flex items-center">
+                  <Eye className="mr-2 text-gaming-blue" size={16} />
+                  Observer Role Management
+                </h3>
+                <button
+                  onClick={() => setShowObserverManager(false)}
+                  className="text-xs font-semibold text-gaming-text hover:text-white"
+                >
+                  Close
+                </button>
+              </div>
+
+              {managerError && (
+                <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-xs text-red-400">
+                  {managerError}
+                </div>
+              )}
+
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Search users by username or IGN..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2 px-3 text-xs text-white outline-none focus:border-gaming-blue"
+                />
+              </div>
+
+              {fetchingUsers ? (
+                <div className="py-10 text-center text-xs font-bold text-gaming-text">
+                  Fetching registered users...
+                </div>
+              ) : (
+                <div className="max-h-60 overflow-y-auto pr-1 space-y-2.5 scrollbar-thin">
+                  {usersList
+                    .filter(u => 
+                      u.username.toLowerCase().includes(userSearch.toLowerCase()) || 
+                      (u.freeFireName && u.freeFireName.toLowerCase().includes(userSearch.toLowerCase()))
+                    )
+                    .map(u => (
+                      <div key={u._id} className="flex items-center justify-between rounded-xl bg-gaming-card p-3 border border-gaming-border/40">
+                        <div>
+                          <p className="text-xs font-bold text-white">@{u.username}</p>
+                          <p className="text-[9px] text-gaming-text">{u.email} {u.freeFireName ? `| IGN: ${u.freeFireName}` : ''}</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggleObserver(u._id)}
+                          className={`rounded-lg px-2.5 py-1.5 text-[9px] font-extrabold uppercase transition-all duration-200 ${
+                            u.isObserver
+                              ? 'bg-gaming-blue text-black hover:bg-gaming-blue/80'
+                              : 'border border-gaming-border text-gaming-text hover:border-gaming-blue hover:text-gaming-blue'
+                          }`}
+                        >
+                          {u.isObserver ? 'Assigned' : 'Assign'}
+                        </button>
+                      </div>
+                    ))}
+                  {usersList.length === 0 && (
+                    <div className="text-center text-xs text-gaming-text py-6">
+                      No registered users found.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
