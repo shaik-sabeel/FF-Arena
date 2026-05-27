@@ -802,13 +802,18 @@ const Home = () => {
                   {usersList
                     .filter(u => 
                       u.username.toLowerCase().includes(userSearch.toLowerCase()) || 
-                      (u.freeFireName && u.freeFireName.toLowerCase().includes(userSearch.toLowerCase()))
+                      (u.freeFireName && u.freeFireName.toLowerCase().includes(userSearch.toLowerCase())) ||
+                      (u.freeFireId && u.freeFireId.toLowerCase().includes(userSearch.toLowerCase())) ||
+                      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u._id.toString().toLowerCase().includes(userSearch.toLowerCase())
                     )
                     .map(u => (
                       <div key={u._id} className="flex items-center justify-between rounded-xl bg-gaming-card p-3 border border-gaming-border/40">
                         <div>
                           <p className="text-xs font-bold text-white">@{u.username}</p>
-                          <p className="text-[9px] text-gaming-text">{u.email} {u.freeFireName ? `| IGN: ${u.freeFireName}` : ''}</p>
+                          <p className="text-[9px] text-gaming-text">
+                            {u.email} {u.freeFireName ? `| IGN: ${u.freeFireName}` : ''} {u.freeFireId ? `| Player ID: ${u.freeFireId}` : ''}
+                          </p>
                         </div>
                         <button
                           onClick={() => handleToggleObserver(u._id)}

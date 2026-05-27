@@ -57,7 +57,7 @@ router.get('/all', auth, async (req, res) => {
       return res.status(403).json({ msg: 'Access denied: Only Hosts or Admins can fetch all users.' });
     }
 
-    const users = await User.find({}).select('username email freeFireName role isObserver');
+    const users = await User.find({}).select('username email freeFireName freeFireId role isObserver');
     res.json(users);
   } catch (err) {
     console.error(err.message);
