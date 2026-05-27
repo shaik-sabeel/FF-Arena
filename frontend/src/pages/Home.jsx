@@ -166,7 +166,7 @@ const Home = () => {
         entryFee: Number(formData.entryFee),
         prizePool: Number(formData.prizePool),
         slots: Number(formData.slots),
-        matchDateTime: formData.matchDateTime,
+        matchDateTime: new Date(formData.matchDateTime).toISOString(),
         prizeDistribution: {
           winnerCount: Number(formData.winnerCount),
           firstPlacePrize: Number(formData.firstPlacePrize || 0),
