@@ -166,7 +166,12 @@ const Home = () => {
         entryFee: Number(formData.entryFee),
         prizePool: Number(formData.prizePool),
         slots: Number(formData.slots),
-        matchDateTime: new Date(formData.matchDateTime).toISOString(),
+        matchDateTime: (() => {
+          const [datePart, timePart] = formData.matchDateTime.split('T');
+          const [year, month, day] = datePart.split('-').map(Number);
+          const [hour, minute] = timePart.split(':').map(Number);
+          return new Date(year, month - 1, day, hour, minute).toISOString();
+        })(),
         prizeDistribution: {
           winnerCount: Number(formData.winnerCount),
           firstPlacePrize: Number(formData.firstPlacePrize || 0),
