@@ -425,6 +425,7 @@ const Home = () => {
                   <option value="Clash Squad">Clash Squad</option>
                   <option value="Custom Room">Custom Room</option>
                   <option value="Solo Showdown">Solo Showdown</option>
+                  <option value="Lone Wolf">Lone Wolf</option>
                 </select>
               </div>
 
@@ -618,7 +619,7 @@ const Home = () => {
 
         {/* Filters Bar */}
         <div className="mb-8 flex flex-wrap gap-2.5">
-          {['All', 'BR Ranked', 'Clash Squad', 'Custom Room', 'Solo Showdown'].map((mode) => (
+          {['All', 'BR Ranked', 'Clash Squad', 'Custom Room', 'Solo Showdown', 'Lone Wolf'].map((mode) => (
             <button
               key={mode}
               onClick={() => setFilterMode(mode)}

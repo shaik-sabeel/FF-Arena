@@ -13,7 +13,7 @@ const TournamentSchema = new mongoose.Schema({
   gameMode: {
     type: String,
     required: true,
-    enum: ['BR Ranked', 'Clash Squad', 'Custom Room', 'Solo Showdown'],
+    enum: ['BR Ranked', 'Clash Squad', 'Custom Room', 'Solo Showdown', 'Lone Wolf'],
     default: 'BR Ranked'
   },
   map: {

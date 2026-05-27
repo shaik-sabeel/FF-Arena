@@ -11,7 +11,7 @@ app.use(express.json());
 
 // Basic Root Route
 app.get('/', (req, res) => {
-  res.send('Free Fire Tournament API Server Running.');
+  res.send('BL Battle Tournament API Server Running.');
 });
 
 // Define Routes
@@ -26,11 +26,17 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/freefire_t
 
 console.log('Attempting to connect to MongoDB...');
 
+const { startAutomationBot } = require('./services/automationService');
+
 mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log('MongoDB Connected Successfully.');
-    app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+    app.listen(PORT, () => {
+      console.log(`Server started on port ${PORT}`);
+      // Start background automation checks
+      startAutomationBot();
+    });
   })
   .catch((err) => {
     console.error('MongoDB Connection Failure:', err.message);
