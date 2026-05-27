@@ -1,12 +1,19 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getDeferredPrompt, clearDeferredPrompt } from '../registerServiceWorker';
-import { Gamepad2, Settings, Monitor, Phone, Download, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Gamepad2, Settings, Monitor, Phone, Download, CheckCircle, AlertTriangle, ShieldCheck, LogOut } from 'lucide-react';
 import gsap from 'gsap';
 
 const SettingsPage = () => {
-  const { user, updateProfile } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const { user, updateProfile, logout } = useContext(AuthContext);
   
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   // Profile Form States
   const [freeFireId, setFreeFireId] = useState(user?.freeFireId || '');
   const [freeFireName, setFreeFireName] = useState(user?.freeFireName || '');
@@ -202,6 +209,24 @@ const SettingsPage = () => {
               {saving ? 'Saving details...' : 'Save Character Link'}
             </button>
           </form>
+        </div>
+
+        {/* Session Panel */}
+        <div className="glass-panel rounded-2xl border border-gaming-border p-5">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-white flex items-center">
+            <LogOut className="mr-1.5 text-red-500" size={16} />
+            Account Session
+          </h2>
+          <p className="mb-4 text-xs text-gaming-text">
+            Logout of your active session on this device. You will need your credentials to log back in.
+          </p>
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center space-x-2 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-2.5 text-xs font-black text-red-400 hover:bg-red-500 hover:text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all duration-300 cursor-pointer"
+          >
+            <LogOut size={14} />
+            <span>Logout Account</span>
+          </button>
         </div>
 
       </div>

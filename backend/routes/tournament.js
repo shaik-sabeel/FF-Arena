@@ -111,7 +111,7 @@ router.post('/:id/join', auth, async (req, res) => {
     }
 
     // Check if already joined
-    if (tournament.playersJoined.includes(req.user.id)) {
+    if (tournament.playersJoined.some(pId => pId.toString() === req.user.id)) {
       return res.status(400).json({ msg: 'You have already joined this tournament' });
     }
 
@@ -521,7 +521,7 @@ router.delete('/:id', auth, async (req, res) => {
     // Only host or admin can delete
     const isHost = tournament.host.toString() === req.user.id;
     const userObj = await User.findById(req.user.id);
-    const isAdmin = userObj && (userObj.role === 'admin' || userObj.role === 'host');
+    const isAdmin = userObj && userObj.role === 'admin';
     
     if (!isHost && !isAdmin) {
       return res.status(401).json({ msg: 'User not authorized to delete this tournament' });
