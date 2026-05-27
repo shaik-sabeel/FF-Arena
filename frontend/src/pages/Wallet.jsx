@@ -165,9 +165,9 @@ const WalletPage = () => {
           key: keyId,
           amount: orderRes.data.amount,
           currency: 'INR',
-          name: 'FF Arena',
+          name: 'BL Battle',
           description: 'Wallet Cash Load',
-          image: '/logo.svg',
+          image: '/logo.jpg',
           order_id: orderId,
           handler: async (response) => {
             try {

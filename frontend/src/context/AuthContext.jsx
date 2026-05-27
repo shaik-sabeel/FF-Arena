@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   // Update profile details
   const updateProfile = async (freeFireId, freeFireName, role) => {
     try {
-      const res = await API.put('/api/user/profile' || '/user/profile', {
+      const res = await API.put('/user/profile', {
         freeFireId,
         freeFireName,
         role

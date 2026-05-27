@@ -76,7 +76,7 @@ const IntroScreen = ({ onComplete }) => {
           ref={titleRef}
           className="bg-gradient-neon bg-clip-text text-4xl font-extrabold tracking-[8px] text-transparent md:text-6xl font-gaming uppercase select-none drop-shadow-[0_0_15px_rgba(53,213,250,0.6)]"
         >
-          FF <span className="text-white">ARENA</span>
+          BL <span className="text-white">BATTLE</span>
         </h1>
         
         {/* Underline glow */}

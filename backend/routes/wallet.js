@@ -206,7 +206,7 @@ router.post('/withdraw', auth, async (req, res) => {
           mode: 'UPI',
           purpose: 'payout',
           queue_if_low_balance: true,
-          narration: 'FF Arena Wallet Payout'
+          narration: 'BL Battle Wallet Payout'
         });
         
         if (!payoutRes.ok) {

@@ -17,6 +17,7 @@ const TournamentDetails = () => {
   // Registration and actions states
   const [joining, setJoining] = useState(false);
   const [joinSuccess, setJoinSuccess] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Host room creation console states
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -244,6 +245,22 @@ const TournamentDetails = () => {
     }
   };
 
+  const handleDeleteTournament = async () => {
+    if (!window.confirm('Are you absolutely sure you want to cancel and delete this tournament? Registered players will be fully refunded their entry fees.')) {
+      return;
+    }
+
+    setDeleting(true);
+    setError('');
+    try {
+      await API.delete(`/tournament/${id}`);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Failed to delete tournament');
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-80 flex-col items-center justify-center">
@@ -272,6 +289,8 @@ const TournamentDetails = () => {
   });
   const slotsLeft = tournament.slots - (tournament.playersJoined?.length || 0);
   const isHost = (tournament.host?._id || tournament.host)?.toString() === userId?.toString();
+  const isAdmin = user?.role === 'admin';
+  const canManage = isHost || isAdmin;
 
   return (
     <div ref={containerRef} className="mx-auto max-w-5xl px-4 py-8 safe-bottom">
@@ -491,7 +510,7 @@ const TournamentDetails = () => {
           </div>
 
           {/* Host Administration Console */}
-          {isHost && (
+          {canManage && (
             <div
               ref={hostConsoleRef}
               className="glass-panel border-t-2 border-t-gaming-accent rounded-2xl border border-gaming-border p-5 space-y-6 shadow-neon"
@@ -615,6 +634,16 @@ const TournamentDetails = () => {
                   Match completed. Prizes have been credited to player wallets.
                 </div>
               )}
+
+              <div className="border-t border-gaming-border pt-4">
+                <button
+                  onClick={handleDeleteTournament}
+                  disabled={deleting}
+                  className="w-full rounded-xl bg-red-600 hover:bg-red-700 py-3 text-xs font-black text-white transition-all duration-300 shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_22px_rgba(220,38,38,0.5)] transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 cursor-pointer uppercase tracking-wider"
+                >
+                  {deleting ? 'Deleting Lobby...' : 'Cancel & Delete Tournament'}
+                </button>
+              </div>
             </div>
           )}
 

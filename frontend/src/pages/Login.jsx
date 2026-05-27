@@ -292,12 +292,12 @@ const Login = () => {
             {/* Header Logo */}
             <div className="mb-6 text-center">
               <img
-                src="/logo.svg"
+                src="/logo.jpg"
                 alt="Logo"
-                className="mx-auto mb-4 h-16 w-16 drop-shadow-[0_0_12px_rgba(53,213,250,0.6)]"
+                className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover drop-shadow-[0_0_12px_rgba(53,213,250,0.6)]"
               />
               <h2 className="text-2xl font-black tracking-wide text-white font-gaming uppercase">
-                Welcome to <span className="text-gaming-accent">FF Arena</span>
+                Welcome to <span className="text-gaming-accent">BL Battle</span>
               </h2>
               <p className="mt-1.5 text-xs text-gaming-text">
                 Log in to participate in tournaments and claim prizes

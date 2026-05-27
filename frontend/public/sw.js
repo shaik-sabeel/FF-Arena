@@ -1,8 +1,8 @@
-const CACHE_NAME = 'ff-arena-cache-v1';
+const CACHE_NAME = 'bl-battle-cache-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/logo.svg',
+  '/logo.jpg',
   '/manifest.json'
 ];
 

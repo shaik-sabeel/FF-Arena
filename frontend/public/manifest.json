@@ -1,11 +1,11 @@
 {
-  "short_name": "FF Arena",
-  "name": "Free Fire Tournament Arena",
-  "description": "Competitive Free Fire Tournament and Custom Match Platform with Real-Time Wallet Winnings.",
+  "short_name": "BL Battle",
+  "name": "BL Battle Tournament Arena",
+  "description": "Competitive BL Battle Tournament and Custom Match Platform with Real-Time Wallet Winnings.",
   "icons": [
     {
-      "src": "logo.svg",
-      "type": "image/svg+xml",
+      "src": "logo.jpg",
+      "type": "image/jpeg",
       "sizes": "192x192 512x512 any",
       "purpose": "any maskable"
     }

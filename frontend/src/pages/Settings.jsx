@@ -101,7 +101,7 @@ const SettingsPage = () => {
             Mobile App Shortcut
           </h2>
           <p className="mb-4 text-xs text-gaming-text">
-            Add FF Arena to your phone home screen to launch it directly as a full-screen, native-like gaming application.
+            Add BL Battle to your phone home screen to launch it directly as a full-screen, native-like gaming application.
           </p>
 
           {isInstalled ? (

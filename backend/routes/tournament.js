@@ -508,4 +508,52 @@ router.put('/:id/resolve', auth, async (req, res) => {
   }
 });
 
+// @route   DELETE api/tournament/:id
+// @desc    Delete/Cancel a tournament (and refund registered players)
+// @access  Private (Host or Admin only)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ msg: 'Tournament not found' });
+    }
+
+    // Only host or admin can delete
+    const isHost = tournament.host.toString() === req.user.id;
+    const userObj = await User.findById(req.user.id);
+    const isAdmin = userObj && (userObj.role === 'admin' || userObj.role === 'host');
+    
+    if (!isHost && !isAdmin) {
+      return res.status(401).json({ msg: 'User not authorized to delete this tournament' });
+    }
+
+    // Refund registered players if entry fee > 0 AND tournament is not completed
+    if (tournament.status !== 'completed' && tournament.entryFee > 0 && tournament.playersJoined.length > 0) {
+      for (const playerId of tournament.playersJoined) {
+        const player = await User.findById(playerId);
+        if (player) {
+          player.walletBalance += tournament.entryFee;
+          await player.save();
+
+          // Create refund transaction log
+          const refundTransaction = new Transaction({
+            user: player._id,
+            type: 'deposit',
+            amount: tournament.entryFee,
+            status: 'completed',
+            description: `Refund for cancelled tournament: ${tournament.title}`
+          });
+          await refundTransaction.save();
+        }
+      }
+    }
+
+    await Tournament.findByIdAndDelete(req.params.id);
+    res.json({ success: true, msg: 'Tournament cancelled and deleted successfully.' });
+  } catch (err) {
+    console.error('Delete tournament error:', err.message);
+    res.status(500).send('Server Error deleting tournament');
+  }
+});
+
 module.exports = router;

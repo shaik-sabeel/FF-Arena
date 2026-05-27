@@ -38,9 +38,9 @@ const Navbar = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <img src="/logo.svg" alt="Arena Logo" className="h-9 w-9 drop-shadow-[0_0_8px_rgba(0,229,255,0.6)]" />
+          <img src="/logo.jpg" alt="Arena Logo" className="h-9 w-9 rounded-md object-cover drop-shadow-[0_0_8px_rgba(0,229,255,0.6)]" />
           <span className="bg-gradient-neon bg-clip-text text-xl font-extrabold tracking-wider text-transparent font-gaming">
-            FF <span className="text-white">ARENA</span>
+            BL <span className="text-white">BATTLE</span>
           </span>
         </Link>
 
@@ -71,10 +71,10 @@ const Navbar = () => {
               {/* User Dropdown/Profile Avatar or Logout */}
               <button
                 onClick={handleLogout}
-                className="hidden items-center space-x-1 rounded-lg border border-gaming-border px-3 py-1.5 text-xs font-semibold text-gaming-text transition hover:bg-gaming-border hover:text-white md:flex"
+                className="flex items-center space-x-1 rounded-lg border border-gaming-border px-2.5 py-1.5 text-xs font-semibold text-gaming-text transition hover:bg-gaming-border hover:text-white sm:px-3 cursor-pointer"
               >
                 <LogOut size={13} />
-                <span>Logout</span>
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </>
           ) : (
