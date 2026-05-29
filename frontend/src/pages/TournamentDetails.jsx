@@ -499,6 +499,13 @@ const TournamentDetails = () => {
               </div>
             </div>
 
+            {tournament.gameMode === 'BR Ranked' && tournament.perKillReward > 0 && (
+              <div className="mb-4 rounded-xl bg-gaming-accent/10 border border-gaming-accent/25 p-3 flex justify-between items-center">
+                <span className="text-xs font-bold text-gaming-accent">Per Kill Bonus:</span>
+                <span className="text-xs font-black text-white">₹{tournament.perKillReward}</span>
+              </div>
+            )}
+
             {/* Error alerts inside card */}
             {error && (
               <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-[10px] font-bold text-red-400">

@@ -65,6 +65,10 @@ const TournamentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  perKillReward: {
+    type: Number,
+    default: 0
+  },
   observerVotes: [{
     observer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     results: [{

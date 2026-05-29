@@ -12,7 +12,7 @@ const { checkConsensusAndPayout } = require('../services/automationService');
 // @desc    Create a tournament (Host/Admin only)
 // @access  Private
 router.post('/create', auth, async (req, res) => {
-  const { title, description, gameMode, map, entryFee, prizePool, slots, matchDateTime, prizeDistribution, maxObservers, observerReward } = req.body;
+  const { title, description, gameMode, map, entryFee, prizePool, slots, matchDateTime, prizeDistribution, maxObservers, observerReward, perKillReward } = req.body;
 
   try {
     const userObj = await User.findById(req.user.id);
@@ -42,6 +42,7 @@ router.post('/create', auth, async (req, res) => {
       host: req.user.id,
       maxObservers: maxObservers ? Number(maxObservers) : 5,
       observerReward: observerReward ? Number(observerReward) : 0,
+      perKillReward: gameMode === 'BR Ranked' ? Number(perKillReward || 0) : 0,
       prizeDistribution: prizeDistribution || {
         winnerCount: 1,
         prizes: [{ rank: 1, amount: Number(prizePool) }]
@@ -402,13 +403,18 @@ router.put('/:id/resolve', auth, async (req, res) => {
       });
     }
 
-    // Retrieve prize distribution setup
-    const dist = {
-      winnerCount: tournament.prizeDistribution?.winnerCount || 1,
-      firstPlacePrize: (tournament.prizeDistribution?.firstPlacePrize > 0) ? tournament.prizeDistribution.firstPlacePrize : tournament.prizePool,
-      secondPlacePrize: tournament.prizeDistribution?.secondPlacePrize || 0,
-      thirdPlacePrize: tournament.prizeDistribution?.thirdPlacePrize || 0
-    };
+    // Determine prize values
+    const prizesMap = {};
+    if (tournament.prizeDistribution?.prizes && tournament.prizeDistribution.prizes.length > 0) {
+      tournament.prizeDistribution.prizes.forEach(p => {
+        prizesMap[p.rank] = p.amount;
+      });
+    } else {
+      prizesMap[1] = tournament.prizePool;
+      prizesMap[2] = 0;
+      prizesMap[3] = 0;
+    }
+    const winnerCount = tournament.prizeDistribution?.winnerCount || 1;
 
     if (tournament.playersJoined.length === 0) {
       return res.status(400).json({ msg: 'Cannot resolve a lobby with zero registered players.' });
@@ -435,7 +441,7 @@ router.put('/:id/resolve', auth, async (req, res) => {
     }
 
     // Assign 2nd place
-    if (dist.winnerCount >= 2 && player2 && player2.freeFireName) {
+    if (winnerCount >= 2 && player2 && player2.freeFireName) {
       garenaLobbyResults.push({
         ign: player2.freeFireName,
         rank: 2,
@@ -444,7 +450,7 @@ router.put('/:id/resolve', auth, async (req, res) => {
     }
 
     // Assign 3rd place
-    if (dist.winnerCount === 3 && player3 && player3.freeFireName) {
+    if (winnerCount === 3 && player3 && player3.freeFireName) {
       garenaLobbyResults.push({
         ign: player3.freeFireName,
         rank: 3,
@@ -498,14 +504,15 @@ router.put('/:id/resolve', auth, async (req, res) => {
       );
 
       if (matchedPlayer) {
-        let prizeWon = 0;
+        const rankPrize = prizesMap[entry.rank] || 0;
+        let prizeWon = rankPrize;
         if (entry.rank === 1) {
-          prizeWon = dist.firstPlacePrize;
           winnerId = matchedPlayer._id;
-        } else if (entry.rank === 2 && dist.winnerCount >= 2) {
-          prizeWon = dist.secondPlacePrize;
-        } else if (entry.rank === 3 && dist.winnerCount === 3) {
-          prizeWon = dist.thirdPlacePrize;
+        }
+
+        // Add per kill reward if BR Ranked and perKillReward is set
+        if (tournament.gameMode === 'BR Ranked' && tournament.perKillReward > 0) {
+          prizeWon += Number(entry.kills || 0) * tournament.perKillReward;
         }
 
         results.push({
@@ -517,17 +524,25 @@ router.put('/:id/resolve', auth, async (req, res) => {
       }
     }
 
-    // 3. Deduct total prize pool from Host wallet
-    host.walletBalance -= tournament.prizePool;
+    // 3. Deduct total payout (prize pool + kill rewards) from Host wallet
+    const totalPayout = results.reduce((sum, r) => sum + r.prizeWon, 0);
+
+    if (host.walletBalance < totalPayout) {
+      return res.status(400).json({
+        msg: `Insufficient Host Balance: Host wallet has ₹${host.walletBalance.toFixed(2)}, but ₹${totalPayout.toFixed(2)} is required to resolve payouts.`
+      });
+    }
+
+    host.walletBalance -= totalPayout;
     await host.save();
 
     // Log host withdrawal transaction
     const hostTransaction = new Transaction({
       user: host._id,
       type: 'withdraw',
-      amount: tournament.prizePool,
+      amount: totalPayout,
       status: 'completed',
-      description: `Prize pool payout deduction for tournament: ${tournament.title}`
+      description: `Prize pool + kill rewards payout deduction for tournament: ${tournament.title}`
     });
     await hostTransaction.save();
 
@@ -642,11 +657,23 @@ router.post('/:id/vote', auth, async (req, res) => {
       prizesMap[2] = 0;
     }
 
-    const prize1 = prizesMap[1] || 0;
-    const prize2 = prizesMap[2] || 0;
-    const obsReward = tournament.observerReward || 0;
+    // Process all player payouts dynamically (to support per-kill rewards)
+    let playersTotalPayout = 0;
+    const processedResults = results.map(r => {
+      const rankPrize = prizesMap[r.rank] || 0;
+      const killReward = (tournament.gameMode === 'BR Ranked' && tournament.perKillReward > 0) ? (Number(r.kills || 0) * tournament.perKillReward) : 0;
+      const prizeWon = rankPrize + killReward;
+      playersTotalPayout += prizeWon;
+      return {
+        user: r.user,
+        rank: Number(r.rank),
+        kills: Number(r.kills || 0),
+        prizeWon: prizeWon
+      };
+    });
 
-    const totalDeduction = tournament.prizePool + obsReward;
+    const obsReward = tournament.observerReward || 0;
+    const totalDeduction = playersTotalPayout + obsReward;
 
     if (host.walletBalance < totalDeduction) {
       return res.status(400).json({
@@ -664,49 +691,37 @@ router.post('/:id/vote', auth, async (req, res) => {
       type: 'withdraw',
       amount: totalDeduction,
       status: 'completed',
-      description: `Prize pool (₹${tournament.prizePool}) + Spectator reward (₹${obsReward}) deduction for match: ${tournament.title}`
+      description: `Prize pool & kill rewards (₹${playersTotalPayout.toFixed(2)}) + Spectator reward (₹${obsReward}) deduction for match: ${tournament.title}`
     });
     await hostTransaction.save();
 
-    // Process Winner 1
-    const p1 = await User.findById(firstPlace.user);
-    if (p1) {
-      p1.stats.kills += Number(firstPlace.kills || 0);
-      p1.stats.earnings += prize1;
-      p1.walletBalance += prize1;
-      p1.stats.matchesWon += 1;
-      await p1.save();
+    // Process player wallet credit and stats updates
+    for (const r of processedResults) {
+      const player = await User.findById(r.user);
+      if (player) {
+        player.stats.kills += Number(r.kills || 0);
+        player.stats.earnings += r.prizeWon;
+        player.walletBalance += r.prizeWon;
 
-      if (prize1 > 0) {
-        const transaction = new Transaction({
-          user: p1._id,
-          type: 'prize',
-          amount: prize1,
-          status: 'completed',
-          description: `Match winnings (Rank #1) for lobby: ${tournament.title}`
-        });
-        await transaction.save();
-      }
-    }
+        if (Number(r.rank) === 1) {
+          player.stats.matchesWon += 1;
+        } else {
+          player.stats.matchesLost += 1;
+        }
 
-    // Process Winner 2
-    const p2 = await User.findById(secondPlace.user);
-    if (p2) {
-      p2.stats.kills += Number(secondPlace.kills || 0);
-      p2.stats.earnings += prize2;
-      p2.walletBalance += prize2;
-      p2.stats.matchesLost += 1;
-      await p2.save();
+        await player.save();
 
-      if (prize2 > 0) {
-        const transaction = new Transaction({
-          user: p2._id,
-          type: 'prize',
-          amount: prize2,
-          status: 'completed',
-          description: `Match winnings (Rank #2) for lobby: ${tournament.title}`
-        });
-        await transaction.save();
+        // Create transaction history entry for winnings payout
+        if (r.prizeWon > 0) {
+          const transaction = new Transaction({
+            user: player._id,
+            type: 'prize',
+            amount: r.prizeWon,
+            status: 'completed',
+            description: `Match winnings (Rank #${r.rank}) for lobby: ${tournament.title}`
+          });
+          await transaction.save();
+        }
       }
     }
 
@@ -725,10 +740,10 @@ router.post('/:id/vote', auth, async (req, res) => {
       await transaction.save();
     }
 
-    // Process stats for other players (increment matchesLost)
-    const winnersList = [firstPlace.user.toString(), secondPlace.user.toString()];
+    // Process stats for other players who were registered but not in results list (increment matchesLost)
+    const listedPlayerIds = processedResults.map(r => r.user.toString());
     for (const registeredPlayerId of tournament.playersJoined) {
-      if (!winnersList.includes(registeredPlayerId.toString())) {
+      if (!listedPlayerIds.includes(registeredPlayerId.toString())) {
         const p = await User.findById(registeredPlayerId);
         if (p) {
           p.stats.matchesLost += 1;
@@ -743,31 +758,15 @@ router.post('/:id/vote', auth, async (req, res) => {
     }
     tournament.observerVotes.push({
       observer: req.user.id,
-      results: results.map(r => ({
+      results: processedResults.map(r => ({
         user: r.user,
-        rank: Number(r.rank),
-        kills: Number(r.kills || 0)
+        rank: r.rank,
+        kills: r.kills
       }))
     });
 
     // Mark complete
-    tournament.results = [
-      { user: firstPlace.user, rank: 1, kills: Number(firstPlace.kills || 0), prizeWon: prize1 },
-      { user: secondPlace.user, rank: 2, kills: Number(secondPlace.kills || 0), prizeWon: prize2 }
-    ];
-    // Add other players to results schema
-    results.forEach(r => {
-      if (Number(r.rank) > 2) {
-        const pReward = prizesMap[r.rank] || 0;
-        tournament.results.push({
-          user: r.user,
-          rank: Number(r.rank),
-          kills: Number(r.kills || 0),
-          prizeWon: pReward
-        });
-      }
-    });
-
+    tournament.results = processedResults;
     tournament.winner = firstPlace.user;
     tournament.status = 'completed';
     if (tournament.roomDetails) {

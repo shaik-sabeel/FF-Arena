@@ -39,6 +39,7 @@ const Home = () => {
     winnerCount: '1',
     maxObservers: '5',
     observerReward: '0',
+    perKillReward: '0',
     prizes: [{ rank: 1, amount: 100 }]
   });
 
@@ -215,6 +216,7 @@ const Home = () => {
         })(),
         maxObservers: Number(formData.maxObservers || 0),
         observerReward: Number(formData.observerReward || 0),
+        perKillReward: formData.gameMode === 'BR Ranked' ? Number(formData.perKillReward || 0) : 0,
         prizeDistribution: {
           winnerCount: Number(formData.winnerCount),
           prizes: formData.prizes.map(p => ({
@@ -238,6 +240,7 @@ const Home = () => {
         winnerCount: '1',
         maxObservers: '5',
         observerReward: '0',
+        perKillReward: '0',
         prizes: [{ rank: 1, amount: 100 }]
       });
       setTimeout(() => {
@@ -629,6 +632,24 @@ const Home = () => {
                   required
                 />
               </div>
+
+              {formData.gameMode === 'BR Ranked' && (
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
+                    <Coins size={13} className="mr-1 text-gaming-accent" />
+                    Per Kill Reward (₹)
+                  </label>
+                  <input
+                    type="number"
+                    name="perKillReward"
+                    min="0"
+                    value={formData.perKillReward}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text flex items-center">
