@@ -255,4 +255,27 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// @route   GET api/auth/test-email
+// @desc    Diagnostic test for SMTP email dispatch
+// @access  Public
+router.get('/test-email', async (req, res) => {
+  const { to = 'bloodlinebattle7@gmail.com' } = req.query;
+  try {
+    const result = await sendEmail(
+      to,
+      'BL Battle SMTP Diagnostic Test',
+      'This is a diagnostic email from your deployed BL Battle server. If you see this, email sending is working perfectly!'
+    );
+    res.json({
+      env: {
+        EMAIL_USER: process.env.EMAIL_USER ? 'Set' : 'Missing',
+        EMAIL_PASS: process.env.EMAIL_PASS ? 'Set' : 'Missing'
+      },
+      result
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 module.exports = router;
