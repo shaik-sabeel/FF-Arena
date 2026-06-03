@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import IntroScreen from './components/IntroScreen';
 import Footer from './components/Footer';
+import Chatbot from './components/Chatbot';
 
 // Pages
 import Home from './pages/Home';
@@ -127,6 +128,9 @@ const AppLayout = () => {
 
       {/* Mobile Sticky Navigation Dock */}
       <BottomNav />
+
+      {/* Floating Tactical Chatbot Assistant */}
+      <Chatbot />
     </div>
   );
 };
