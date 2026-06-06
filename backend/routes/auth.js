@@ -278,4 +278,39 @@ router.get('/test-email', async (req, res) => {
   }
 });
 
+// @route   GET api/auth/diagnostic
+// @desc    Diagnostic test to check database state and environment keys
+// @access  Public
+router.get('/diagnostic', async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const dbName = mongoose.connection.name;
+    const dbHost = mongoose.connection.host;
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    
+    // Count documents
+    const counts = {};
+    for (const coll of collections) {
+      const count = await mongoose.connection.db.collection(coll.name).countDocuments();
+      counts[coll.name] = count;
+    }
+    
+    res.json({
+      success: true,
+      dbName,
+      dbHost,
+      collections: collections.map(c => c.name),
+      counts,
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT,
+        MONGO_URI_CONFIGURED: process.env.MONGO_URI ? 'Yes' : 'No',
+        EMAIL_USER_CONFIGURED: process.env.EMAIL_USER ? 'Yes' : 'No'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 module.exports = router;
