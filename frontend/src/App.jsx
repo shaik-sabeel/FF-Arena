@@ -17,6 +17,7 @@ import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import TournamentDetails from './pages/TournamentDetails';
+import LegalPage from './pages/LegalPage';
 
 // Protected Route Wrapper Component
 const ProtectedRoute = ({ children }) => {
@@ -119,6 +120,11 @@ const AppLayout = () => {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/terms" element={<LegalPage />} />
+          <Route path="/privacy" element={<LegalPage />} />
+          <Route path="/refunds" element={<LegalPage />} />
+          <Route path="/shipping" element={<LegalPage />} />
+          <Route path="/contact" element={<LegalPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

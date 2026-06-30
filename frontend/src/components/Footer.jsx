@@ -9,7 +9,7 @@ const Footer = () => {
   return (
     <footer className="relative z-10 mt-16 border-t border-gaming-border bg-black/90 py-8 px-4 md:px-8 text-gaming-text">
       <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
           
           {/* Brand details */}
           <div className="space-y-4">
@@ -87,12 +87,24 @@ const Footer = () => {
           {/* Quick links */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">Lobby Navigation</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-              <Link to="/" className="hover:text-gaming-accent transition">Home feed</Link>
-              <Link to="/leaderboard" className="hover:text-gaming-accent transition">Leaderboard</Link>
-              <Link to="/wallet" className="hover:text-gaming-accent transition">Wallet</Link>
-              <Link to="/profile" className="hover:text-gaming-accent transition">Gamer Profile</Link>
-              <Link to="/settings" className="hover:text-gaming-accent transition">Settings</Link>
+            <div className="flex flex-col gap-2.5 text-xs font-medium">
+              <Link to="/" className="hover:text-gaming-accent transition w-fit">Home feed</Link>
+              <Link to="/leaderboard" className="hover:text-gaming-accent transition w-fit">Leaderboard</Link>
+              <Link to="/wallet" className="hover:text-gaming-accent transition w-fit">Wallet</Link>
+              <Link to="/profile" className="hover:text-gaming-accent transition w-fit">Gamer Profile</Link>
+              <Link to="/settings" className="hover:text-gaming-accent transition w-fit">Settings</Link>
+            </div>
+          </div>
+
+          {/* Privacy & Legal Documents */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white">Privacy & Terms</h4>
+            <div className="flex flex-col gap-2.5 text-xs font-medium">
+              <Link to="/terms" className="hover:text-gaming-accent transition w-fit">Terms & Conditions</Link>
+              <Link to="/privacy" className="hover:text-gaming-accent transition w-fit">Privacy Policy</Link>
+              <Link to="/refunds" className="hover:text-gaming-accent transition w-fit">Refund & Cancellation</Link>
+              <Link to="/shipping" className="hover:text-gaming-accent transition w-fit">Shipping & Delivery</Link>
+              <Link to="/contact" className="hover:text-gaming-accent transition w-fit">Contact Us</Link>
             </div>
           </div>
 
