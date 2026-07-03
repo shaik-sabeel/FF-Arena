@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import API from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { Wallet, ArrowDownLeft, ArrowUpRight, Clock, Plus, Landmark, CheckCircle, AlertTriangle, ShieldCheck, CreditCard, Send, X } from 'lucide-react';
@@ -225,8 +226,8 @@ const WalletPage = () => {
     setSuccessMsg('');
 
     const parsedAmount = Number(amount);
-    if (isNaN(parsedAmount) || parsedAmount < 150) {
-      setErrorMsg('Minimum withdrawal amount is ₹150');
+    if (isNaN(parsedAmount) || parsedAmount < 50) {
+      setErrorMsg('Minimum withdrawal amount is ₹50');
       return;
     }
 
@@ -287,11 +288,14 @@ const WalletPage = () => {
               <div className="mb-6 md:mb-0">
                 <p className="text-xs font-black uppercase tracking-wider text-gaming-accent flex items-center">
                   <ShieldCheck size={14} className="mr-1.5 text-gaming-accent animate-pulse" />
-                  Secured Arena Wallet
+                  Tournament Credits / Player Balance
                 </p>
                 <h1 className="mt-2.5 text-4xl font-black text-white md:text-5xl glow-text-orange font-gaming">
                   ₹{user ? user.walletBalance.toFixed(2) : '0.00'}
                 </h1>
+                <p className="text-[10px] text-gaming-text mt-1 italic">
+                  Prize winnings are credited after tournament verification.
+                </p>
                 <p className="mt-2 text-xs text-gaming-text">
                   Linked Game UID: <span className="font-mono text-white font-black bg-gaming-border/60 px-2 py-0.5 rounded border border-gaming-border">{user?.freeFireId || 'Not Linked'}</span>
                 </p>
@@ -309,7 +313,7 @@ const WalletPage = () => {
                   className="flex items-center space-x-2 rounded-xl bg-gaming-accent px-5 py-3 text-xs font-black text-black shadow-neon hover:shadow-neon-hover transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   <Plus size={16} strokeWidth={3} />
-                  <span>Razorpay Deposit</span>
+                  <span>Add Tournament Credits</span>
                 </button>
                 
                 <button
@@ -324,7 +328,7 @@ const WalletPage = () => {
                   className="flex items-center space-x-2 rounded-xl border border-gaming-border bg-gaming-card/80 px-5 py-3 text-xs font-black text-white transition-all duration-300 hover:bg-gaming-border/80 hover:border-gaming-blue/40 shadow-glass hover:shadow-neon-blue transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   <Landmark size={16} />
-                  <span>Cash Out UPI</span>
+                  <span>Withdraw Winnings</span>
                 </button>
               </div>
             </div>
@@ -435,7 +439,7 @@ const WalletPage = () => {
           >
             <div className="mb-4 flex items-center justify-between border-b border-gaming-border pb-3">
               <h3 className="text-sm font-black uppercase text-white flex items-center">
-                <CreditCard className="mr-1.5 text-gaming-accent" size={16} /> Razorpay Load
+                <CreditCard className="mr-1.5 text-gaming-accent" size={16} /> Add Tournament Credits
               </h3>
               <button 
                 onClick={() => setShowDeposit(false)} 
@@ -451,7 +455,7 @@ const WalletPage = () => {
             {showSandboxLoader ? (
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <span className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-gaming-accent border-t-transparent" />
-                <p className="text-xs font-bold text-white">Connecting Razorpay Sandbox...</p>
+                <p className="text-xs font-bold text-white">Connecting Checkout Sandbox...</p>
                 <p className="text-[10px] text-gaming-text mt-1">Authorizing mock credentials</p>
               </div>
             ) : (
@@ -471,7 +475,7 @@ const WalletPage = () => {
                 </div>
 
                 <div className="rounded-lg bg-gaming-dark/40 border border-gaming-border p-3 text-[10px] text-gaming-text leading-relaxed">
-                  Secured checkout via Razorpay. Minimum amount to deposit is ₹10.
+                  Secured checkout. Minimum amount to deposit is ₹10.
                 </div>
 
                 <button
@@ -479,7 +483,7 @@ const WalletPage = () => {
                   disabled={processing}
                   className="w-full rounded-xl bg-gaming-accent py-2.5 text-xs font-extrabold text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
                 >
-                  {processing ? 'Connecting Gateway...' : 'Pay with Razorpay'}
+                  {processing ? 'Connecting Gateway...' : 'Deposit credits'}
                 </button>
               </form>
             )}
@@ -500,7 +504,7 @@ const WalletPage = () => {
           >
             <div className="mb-4 flex items-center justify-between border-b border-gaming-border pb-3">
               <h3 className="text-sm font-black uppercase text-white flex items-center">
-                <Landmark className="mr-1.5 text-gaming-blue" size={16} /> Cash Out UPI
+                <Landmark className="mr-1.5 text-gaming-blue" size={16} /> Withdraw Winnings
               </h3>
               <button 
                 onClick={() => setShowWithdraw(false)} 
@@ -513,48 +517,67 @@ const WalletPage = () => {
             {errorMsg && <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-xs font-semibold text-red-400">{errorMsg}</div>}
             {successMsg && <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 p-2.5 text-xs font-semibold text-green-400 flex items-center"><CheckCircle size={14} className="mr-1"/>{successMsg}</div>}
 
-            <form onSubmit={handleWithdrawSubmit} className="space-y-4">
-              <div className="rounded-lg bg-yellow-500/15 border border-yellow-500/20 p-3 text-[10px] text-yellow-500 flex items-start space-x-1.5">
-                <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                <p>Minimum payout is ₹150. Only UPI ID transfers are supported.</p>
+            {user?.kycStatus !== 'verified' ? (
+              <div className="space-y-4 py-4 text-center">
+                <AlertTriangle size={36} className="text-yellow-500 mx-auto animate-pulse" />
+                <h4 className="text-white font-bold text-sm uppercase">KYC Verification Required</h4>
+                <p className="text-xs text-gaming-text leading-relaxed">
+                  Under compliance guidelines, you must verify your identity before initiating withdrawals. Your current KYC status is <span className="text-yellow-500 font-bold uppercase">{user?.kycStatus || 'unverified'}</span>.
+                </p>
+                <div className="pt-2">
+                  <Link 
+                    to="/settings"
+                    onClick={() => setShowWithdraw(false)}
+                    className="inline-block rounded-xl bg-gaming-blue px-6 py-2.5 text-xs font-black text-black transition shadow-neon-blue cursor-pointer"
+                  >
+                    Complete KYC in Settings
+                  </Link>
+                </div>
               </div>
+            ) : (
+              <form onSubmit={handleWithdrawSubmit} className="space-y-4">
+                <div className="rounded-lg bg-yellow-500/15 border border-yellow-500/20 p-3 text-[10px] text-yellow-500 flex items-start space-x-1.5">
+                  <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                  <p>Minimum payout is ₹50. Only UPI ID transfers are supported.</p>
+                </div>
 
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Amount to Withdraw (₹)</label>
-                <input
-                  type="number"
-                  placeholder="Min 150"
-                  min="150"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-blue"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Your UPI Address (VPA)</label>
-                <div className="relative">
-                  <Send className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-gaming-text" />
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Amount to Withdraw (₹)</label>
                   <input
-                    type="text"
-                    placeholder="e.g. gamer@ybl, name@paytm"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 pr-3 pl-9 text-xs font-medium text-white outline-none focus:border-gaming-blue"
+                    type="number"
+                    placeholder="Min 50"
+                    min="50"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-blue"
                     required
                   />
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={processing}
-                className="w-full rounded-xl bg-gaming-blue py-2.5 text-xs font-extrabold text-black transition shadow-neon-blue disabled:opacity-50"
-              >
-                {processing ? 'Processing Cashout...' : 'Request Cashout'}
-              </button>
-            </form>
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Your UPI Address (VPA)</label>
+                  <div className="relative">
+                    <Send className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-gaming-text" />
+                    <input
+                      type="text"
+                      placeholder="e.g. gamer@ybl, name@paytm"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 pr-3 pl-9 text-xs font-medium text-white outline-none focus:border-gaming-blue"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className="w-full rounded-xl bg-gaming-blue py-2.5 text-xs font-extrabold text-black transition shadow-neon-blue disabled:opacity-50"
+                >
+                  {processing ? 'Processing Payout...' : 'Request Payout'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

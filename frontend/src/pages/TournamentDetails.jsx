@@ -17,6 +17,7 @@ const TournamentDetails = () => {
   // Registration and actions states
   const [joining, setJoining] = useState(false);
   const [joinSuccess, setJoinSuccess] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   // Host room creation console states
@@ -85,6 +86,11 @@ const TournamentDetails = () => {
   const handleBotResolve = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     
+    const confirmPayout = window.confirm(
+      "CONFIRM RESOLUTION: Are you sure you want to finalize results and execute cash prize distributions to player accounts? This operation is permanent and cannot be reversed."
+    );
+    if (!confirmPayout) return;
+
     setBotRunning(true);
     setBotLogs([]);
     setError('');
@@ -375,9 +381,15 @@ const TournamentDetails = () => {
             
             {/* Tag bar */}
             <div className="mb-4 flex items-center justify-between">
-              <span className="rounded-md border border-gaming-accent/20 bg-gaming-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gaming-accent">
-                {tournament.gameMode}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border border-gaming-accent/20 bg-gaming-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gaming-accent">
+                  {tournament.gameMode}
+                </span>
+                <span className="rounded-md border border-gaming-gold/25 bg-gaming-gold/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-gaming-gold flex items-center gap-1.5">
+                  <Award size={12} />
+                  SKILL MATCH
+                </span>
+              </div>
               <span className={`rounded-md border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
                 tournament.status === 'upcoming' 
                   ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' 
@@ -587,6 +599,20 @@ const TournamentDetails = () => {
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Policy acceptance checkbox */}
+                <div className="flex items-start gap-2 rounded-lg bg-gaming-dark/60 border border-gaming-border p-3 mb-2">
+                  <input 
+                    type="checkbox" 
+                    id="terms-check" 
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-gaming-border bg-gaming-dark text-gaming-accent focus:ring-0"
+                  />
+                  <label htmlFor="terms-check" className="text-[10px] text-gaming-text leading-relaxed cursor-pointer select-none">
+                    I declare that I am 18+ years of age. I agree to the <Link to="/terms" target="_blank" className="text-gaming-accent hover:underline">Terms & Conditions</Link>, <Link to="/refunds" target="_blank" className="text-gaming-accent hover:underline">Refund Policy</Link> and <Link to="/disclaimer" target="_blank" className="text-gaming-accent hover:underline">Skill-Based Disclaimer</Link>.
+                  </label>
+                </div>
+
                 {isAssignedObserver ? (
                   <>
                     <p className="text-[10px] text-center font-bold text-gaming-blue uppercase tracking-wider mb-2">
@@ -595,7 +621,7 @@ const TournamentDetails = () => {
                     {slotsLeft > 0 ? (
                       <button
                         onClick={() => handleJoin('player')}
-                        disabled={joining}
+                        disabled={joining || !acceptedTerms}
                         className="w-full rounded-xl bg-gaming-accent py-3.5 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50 flex items-center justify-center space-x-2"
                       >
                         <Swords size={14} />
@@ -610,7 +636,7 @@ const TournamentDetails = () => {
                     {observerSlotsLeft > 0 ? (
                       <button
                         onClick={() => handleJoin('observer')}
-                        disabled={joining}
+                        disabled={joining || !acceptedTerms}
                         className="w-full rounded-xl border border-gaming-blue bg-gaming-blue/10 py-3.5 text-sm font-extrabold text-gaming-blue hover:bg-gaming-blue/20 transition disabled:opacity-50 flex items-center justify-center space-x-2"
                       >
                         <Eye size={14} />
@@ -627,7 +653,7 @@ const TournamentDetails = () => {
                     {slotsLeft > 0 ? (
                       <button
                         onClick={() => handleJoin('player')}
-                        disabled={joining}
+                        disabled={joining || !acceptedTerms}
                         className="w-full rounded-xl bg-gaming-accent py-3.5 text-sm font-extrabold text-white shadow-neon hover:shadow-neon-hover transition disabled:opacity-50 flex items-center justify-center space-x-2"
                       >
                         <Swords size={14} />
@@ -837,7 +863,7 @@ const TournamentDetails = () => {
                         onClick={handleBotResolve}
                         className="w-full rounded-xl bg-gradient-fire py-3.5 text-xs font-black text-black transition shadow-neon hover:shadow-neon-hover flex items-center justify-center space-x-2"
                       >
-                        <span>🤖 ACTIVATE RESULTS BOT & PAYOUT</span>
+                        <span>✓ FINALIZE RESULTS & CRITICAL PAYOUTS</span>
                       </button>
                     </div>
                   )}

@@ -120,11 +120,19 @@ const AppLayout = () => {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/about" element={<LegalPage />} />
           <Route path="/terms" element={<LegalPage />} />
           <Route path="/privacy" element={<LegalPage />} />
           <Route path="/refunds" element={<LegalPage />} />
           <Route path="/shipping" element={<LegalPage />} />
           <Route path="/contact" element={<LegalPage />} />
+          <Route path="/responsible-gaming" element={<LegalPage />} />
+          <Route path="/kyc-policy" element={<LegalPage />} />
+          <Route path="/aml-policy" element={<LegalPage />} />
+          <Route path="/cookie-policy" element={<LegalPage />} />
+          <Route path="/community-guidelines" element={<LegalPage />} />
+          <Route path="/fair-play" element={<LegalPage />} />
+          <Route path="/disclaimer" element={<LegalPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

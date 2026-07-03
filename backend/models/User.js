@@ -54,6 +54,25 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  kycStatus: {
+    type: String,
+    enum: ['unverified', 'pending', 'verified', 'rejected'],
+    default: 'unverified'
+  },
+  kycDetails: {
+    fullName: { type: String, default: '' },
+    dob: { type: Date, default: null },
+    pan: { type: String, default: '' },
+    documentType: { type: String, default: '' },
+    documentUrl: { type: String, default: '' },
+    upiId: { type: String, default: '' },
+    submittedAt: { type: Date, default: null },
+    rejectionReason: { type: String, default: '' }
+  },
+  policiesAcceptedAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

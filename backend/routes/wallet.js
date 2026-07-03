@@ -114,9 +114,9 @@ router.post('/withdraw', auth, async (req, res) => {
 
   const numericAmount = Number(amount);
 
-  // Enforce ₹150 minimum withdrawal limit
-  if (numericAmount < 150) {
-    return res.status(400).json({ msg: 'Minimum withdrawal amount is ₹150' });
+  // Enforce ₹50 minimum withdrawal limit
+  if (numericAmount < 50) {
+    return res.status(400).json({ msg: 'Minimum withdrawal amount is ₹50' });
   }
 
   if (!payoutDetails) {
@@ -127,6 +127,11 @@ router.post('/withdraw', auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
+    }
+
+    // Enforce KYC verification before payouts
+    if (user.kycStatus !== 'verified') {
+      return res.status(400).json({ msg: 'KYC verification is mandatory before making withdrawals. Please complete your KYC verification in Settings.' });
     }
 
     if (user.walletBalance < numericAmount) {
