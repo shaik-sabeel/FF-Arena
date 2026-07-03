@@ -19,18 +19,18 @@ import {
 const LegalPage = () => {
   const { pathname } = useLocation();
 
+  // Dynamic merchant information
+  const legalName = "BL BATTLE";
+  const udyamNumber = "UDYAM-AP-18-0065432";
+  const registeredAddress = "Hussainapuram Street, Peapully Mandal, Kurnool District, Andhra Pradesh - 518221";
+  const supportEmail = "bloodlinebattle7@gmail.com";
+  const lastUpdated = "July 03, 2026";
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
 
   const getContent = () => {
-    // Dynamic merchant information
-    const legalName = "BL BATTLE";
-    const udyamNumber = "UDYAM-AP-18-0065432";
-    const registeredAddress = "Hussainapuram Street, Peapully Mandal, Kurnool District, Andhra Pradesh - 518221";
-    const supportEmail = "bloodlinebattle7@gmail.com";
-    const lastUpdated = "July 03, 2026";
-
     switch (pathname) {
       case '/about':
         return {
@@ -374,7 +374,7 @@ const LegalPage = () => {
     }
   };
 
-  const { title, icon, lastUpdated, body } = getContent();
+  const { title, icon, lastUpdated: updateTime, body } = getContent();
 
   return (
     <div className="min-h-screen bg-gaming-dark py-12 px-4 md:px-8">
@@ -388,7 +388,7 @@ const LegalPage = () => {
             <h1 className="text-2xl md:text-3xl font-black uppercase text-white tracking-wider glow-text-blue font-gaming">
               {title}
             </h1>
-            <p className="text-[10px] text-gaming-text uppercase font-semibold mt-1">Last Updated: {lastUpdated}</p>
+            <p className="text-[10px] text-gaming-text uppercase font-semibold mt-1">Last Updated: {updateTime}</p>
           </div>
         </div>
 
