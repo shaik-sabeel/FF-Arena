@@ -390,10 +390,6 @@ const Home = () => {
                 <p className="text-xl font-black text-white md:text-2xl font-gaming leading-none">1000+</p>
                 <p className="mt-1 text-[9px] uppercase font-bold text-gaming-text tracking-wider">Lobbies</p>
               </div>
-              <div>
-                <p className="text-xl font-black text-white md:text-2xl font-gaming leading-none">₹50K+</p>
-                <p className="mt-1 text-[9px] uppercase font-bold text-gaming-text tracking-wider">Winnings Paid</p>
-              </div>
             </div>
           </div>
 
