@@ -366,7 +366,7 @@ const WalletPage = () => {
                 <img
                   src="/qr_durga.png"
                   alt="Admin UPI Payment QR Code"
-                  className="w-52 h-52 object-contain rounded-lg border border-gaming-border bg-white p-1 shadow-md"
+                  className="w-64 h-auto object-contain rounded-lg border border-gaming-border bg-white p-1.5 shadow-md"
                 />
                 <div className="text-center">
                   <p className="text-[10px] font-extrabold text-white">
