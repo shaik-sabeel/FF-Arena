@@ -161,34 +161,44 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Please configure your Free Fire Game ID and IGN in Profile settings before joining.' });
     }
 
-    // 1. Manual UPI QR code payment registration path for paid matches
-    if (role === 'player' && tournament.entryFee > 0) {
-      if (!utr || utr.trim() === '') {
-        return res.status(400).json({ msg: 'Transaction UTR / Reference ID is required for tournament registration.' });
+    // 1. Direct wallet payment or free match registration path
+    if (role === 'player') {
+      if (tournament.entryFee > 0) {
+        // Wallet payment
+        if (user.walletBalance < tournament.entryFee) {
+          return res.status(400).json({ msg: 'Insufficient wallet balance. Please add cash in the Wallet tab.' });
+        }
+
+        user.walletBalance -= tournament.entryFee;
+
+        // Save transaction record for player
+        const transaction = new Transaction({
+          user: req.user.id,
+          type: 'entry_fee',
+          amount: tournament.entryFee,
+          status: 'completed',
+          description: `Entry fee for tournament: ${tournament.title}`
+        });
+        await transaction.save();
+
+        // Credit host's wallet
+        const hostUser = await User.findById(tournament.host);
+        if (hostUser) {
+          hostUser.walletBalance += tournament.entryFee;
+          await hostUser.save();
+
+          // Save transaction record for host income
+          const hostTransaction = new Transaction({
+            user: hostUser._id,
+            type: 'deposit',
+            amount: tournament.entryFee,
+            status: 'completed',
+            description: `Entry fee income from player: ${user.username} for tournament: ${tournament.title}`
+          });
+          await hostTransaction.save();
+        }
       }
 
-      tournament.pendingRegistrations.push({
-        user: req.user.id,
-        role,
-        utr
-      });
-      await tournament.save();
-
-      const updatedTournament = await Tournament.findById(req.params.id)
-        .populate('host', 'username freeFireName email')
-        .populate('playersJoined', 'username freeFireName stats')
-        .populate('observersJoined', 'username freeFireName stats')
-        .populate('pendingRegistrations.user', 'username freeFireName email');
-
-      return res.json({
-        status: 'pending_approval',
-        tournament: updatedTournament,
-        walletBalance: user.walletBalance
-      });
-    }
-
-    // 2. Direct registration for free match or observer
-    if (role === 'player') {
       user.stats.matchesPlayed += 1;
       tournament.playersJoined.push(req.user.id);
     } else {

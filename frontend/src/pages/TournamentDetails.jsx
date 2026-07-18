@@ -211,7 +211,6 @@ const TournamentDetails = () => {
   }, [tournament]);
 
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [utr, setUtr] = useState('');
 
   const handleJoin = async (role = 'player') => {
     if (!user) {
@@ -242,19 +241,13 @@ const TournamentDetails = () => {
     try {
       const res = await API.post(`/tournament/${id}/join`, { 
         role, 
-        paymentMethod: 'manual', 
-        utr: tournament.entryFee > 0 ? utr : undefined 
+        paymentMethod: 'wallet'
       });
       setTournament(res.data.tournament);
       syncWalletBalance(res.data.walletBalance);
       
-      if (res.data.status === 'pending_approval') {
-        setJoinSuccess('Registration request submitted! Awaiting Host approval for transaction UTR.');
-      } else {
-        setJoinSuccess(`Successfully joined this match lobby as a ${role === 'observer' ? 'Spectator' : 'Player'}!`);
-      }
+      setJoinSuccess(`Successfully registered for the match!`);
       setShowJoinModal(false);
-      setUtr('');
       setTimeout(() => setJoinSuccess(''), 4000);
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to join tournament');
@@ -1019,7 +1012,6 @@ const TournamentDetails = () => {
             <button
               onClick={() => {
                 setShowJoinModal(false);
-                setUtr('');
               }}
               className="absolute top-4 right-4 text-gaming-text hover:text-white transition-colors"
             >
@@ -1036,63 +1028,50 @@ const TournamentDetails = () => {
               <span className="text-xl font-gaming font-black text-white">₹{tournament.entryFee}</span>
             </div>
 
-            {/* Manual QR instructions */}
-            <div className="rounded-xl border border-gaming-border bg-gaming-dark/70 p-4 space-y-4">
-              <div className="flex flex-col items-center space-y-2">
-                <p className="text-[10px] font-black uppercase text-gaming-accent tracking-wider">Scan QR to pay ₹{tournament.entryFee}</p>
-                <img
-                  src={tournament.paymentQrOption === 'qr_kowshik' ? '/qr_kowshik.png' : '/qr_durga.png'}
-                  alt="UPI Payment QR Code"
-                  className="w-64 h-auto object-contain rounded-lg border border-gaming-border bg-white p-1.5 shadow-md"
-                />
-                <div className="text-center">
-                  <p className="text-[10px] font-extrabold text-white">
-                    Account Name:{' '}
-                    <span className="text-gaming-accent">
-                      {tournament.paymentQrOption === 'qr_kowshik' 
-                        ? 'KANAGIRI KOWSHIK MANI DEEP REDDY' 
-                        : 'PEDDA PUJARLA KAMMA DURGA PRASAD'}
-                    </span>
-                  </p>
-                  <p className="text-[9px] text-gaming-text mt-0.5">Scan using PhonePe, Google Pay, or Paytm</p>
+            <div className="rounded-xl border border-gaming-border bg-gaming-dark/70 p-4 space-y-3">
+              <div className="flex justify-between text-xs text-gaming-text">
+                <span>Your Available Credits:</span>
+                <span className={`font-extrabold ${user?.walletBalance >= tournament.entryFee ? 'text-green-400' : 'text-red-400'}`}>
+                  ₹{user?.walletBalance || 0}
+                </span>
+              </div>
+              
+              {user?.walletBalance < tournament.entryFee ? (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-[10px] text-red-400 leading-relaxed font-semibold">
+                  ⚠️ Insufficient Credits! Please navigate to the Wallet tab to scan the admin QR code and add funds before registering.
                 </div>
-              </div>
-
-              <div className="space-y-1.5 border-t border-gaming-border/60 pt-3">
-                <label className="block text-[9px] font-black uppercase tracking-wider text-gaming-text">
-                  Enter Transaction UTR / Ref ID (12 Digits)
-                </label>
-                <input
-                  type="text"
-                  maxLength={16}
-                  placeholder="e.g. 612345678901"
-                  value={utr}
-                  onChange={(e) => setUtr(e.target.value.replace(/[^0-9]/g, ''))}
-                  className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/65 py-2.5 px-3 text-xs font-semibold text-white outline-none focus:border-gaming-accent"
-                  required
-                />
-              </div>
+              ) : (
+                <p className="text-[10px] text-gaming-text leading-relaxed">
+                  Entry fee will be deducted directly from your virtual wallet. Click **Confirm Entry** to register instantly.
+                </p>
+              )}
             </div>
 
             <div className="flex space-x-3 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  setShowJoinModal(false);
-                  setUtr('');
-                }}
+                onClick={() => setShowJoinModal(false)}
                 className="w-1/2 rounded-xl border border-gaming-border py-2.5 text-xs font-bold text-gaming-text hover:bg-gaming-card/85 transition"
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={joining || utr.length < 8}
-                onClick={() => handleJoinSubmit('player')}
-                className="w-1/2 rounded-xl bg-gaming-accent py-2.5 text-xs font-black text-black shadow-neon disabled:opacity-50 transition"
-              >
-                {joining ? 'Submitting...' : 'Confirm Entry'}
-              </button>
+              {user?.walletBalance < tournament.entryFee ? (
+                <Link
+                  to="/wallet"
+                  className="w-1/2 rounded-xl bg-gaming-accent py-2.5 text-xs font-black text-black text-center shadow-neon hover:shadow-neon-hover transition flex items-center justify-center"
+                >
+                  Go to Wallet
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled={joining}
+                  onClick={() => handleJoinSubmit('player')}
+                  className="w-1/2 rounded-xl bg-gaming-accent py-2.5 text-xs font-black text-black shadow-neon disabled:opacity-50 transition"
+                >
+                  {joining ? 'Submitting...' : 'Confirm Entry'}
+                </button>
+              )}
             </div>
           </div>
         </div>
