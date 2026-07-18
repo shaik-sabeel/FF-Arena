@@ -12,7 +12,7 @@ const { checkConsensusAndPayout } = require('../services/automationService');
 // @desc    Create a tournament (Host/Admin only)
 // @access  Private
 router.post('/create', auth, async (req, res) => {
-  const { title, description, gameMode, map, entryFee, prizePool, slots, matchDateTime, prizeDistribution, maxObservers, observerReward, perKillReward } = req.body;
+  const { title, description, gameMode, map, entryFee, prizePool, slots, matchDateTime, prizeDistribution, maxObservers, observerReward, perKillReward, paymentQrOption } = req.body;
 
   try {
     const userObj = await User.findById(req.user.id);
@@ -43,6 +43,7 @@ router.post('/create', auth, async (req, res) => {
       maxObservers: maxObservers ? Number(maxObservers) : 5,
       observerReward: observerReward ? Number(observerReward) : 0,
       perKillReward: gameMode === 'BR Ranked' ? Number(perKillReward || 0) : 0,
+      paymentQrOption: paymentQrOption || 'qr_durga',
       prizeDistribution: prizeDistribution || {
         winnerCount: 1,
         prizes: [{ rank: 1, amount: Number(prizePool) }]
@@ -79,7 +80,9 @@ router.get('/:id', async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id)
       .populate('host', 'username freeFireName email')
-      .populate('playersJoined', 'username freeFireName stats');
+      .populate('playersJoined', 'username freeFireName stats')
+      .populate('observersJoined', 'username freeFireName stats')
+      .populate('pendingRegistrations.user', 'username freeFireName email');
 
     if (!tournament) {
       return res.status(404).json({ msg: 'Tournament not found' });
@@ -109,7 +112,7 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Tournament has already started or completed' });
     }
 
-    const { role = 'player' } = req.body;
+    const { role = 'player', paymentMethod = 'wallet', utr } = req.body;
     if (role !== 'player' && role !== 'observer') {
       return res.status(400).json({ msg: 'Invalid registration role' });
     }
@@ -122,10 +125,17 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(400).json({ msg: 'You have already registered for this tournament' });
     }
 
+    // Check if already in pending queue
+    const isPending = tournament.pendingRegistrations && tournament.pendingRegistrations.some(p => p.user.toString() === req.user.id);
+    if (isPending) {
+      return res.status(400).json({ msg: 'Your registration request is already pending verification.' });
+    }
+
+    // Check slots left
+    const pendingPlayersCount = tournament.pendingRegistrations ? tournament.pendingRegistrations.filter(r => r.role === 'player').length : 0;
     if (role === 'player') {
-      // Check if slots available
-      if (tournament.playersJoined.length >= tournament.slots) {
-        return res.status(400).json({ msg: 'Tournament player slots are full' });
+      if ((tournament.playersJoined.length + pendingPlayersCount) >= tournament.slots) {
+        return res.status(400).json({ msg: 'Tournament player slots are full (including pending reviews)' });
       }
     }
 
@@ -151,45 +161,35 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Please configure your Free Fire Game ID and IGN in Profile settings before joining.' });
     }
 
-    if (role === 'player') {
-      // Check wallet balance
-      if (user.walletBalance < tournament.entryFee) {
-        return res.status(400).json({ msg: 'Insufficient wallet balance. Please deposit funds.' });
+    // 1. Manual UPI QR code payment registration path for paid matches
+    if (role === 'player' && tournament.entryFee > 0) {
+      if (!utr || utr.trim() === '') {
+        return res.status(400).json({ msg: 'Transaction UTR / Reference ID is required for tournament registration.' });
       }
 
-      // Process payment and registration
-      user.walletBalance -= tournament.entryFee;
-      user.stats.matchesPlayed += 1;
-
-      // Save transaction record for player
-      const transaction = new Transaction({
+      tournament.pendingRegistrations.push({
         user: req.user.id,
-        type: 'entry_fee',
-        amount: tournament.entryFee,
-        status: 'completed',
-        description: `Entry fee for tournament: ${tournament.title}`
+        role,
+        utr
       });
-      await transaction.save();
+      await tournament.save();
 
-      // Credit host's wallet
-      const hostUser = await User.findById(tournament.host);
-      if (hostUser) {
-        hostUser.walletBalance += tournament.entryFee;
-        await hostUser.save();
+      const updatedTournament = await Tournament.findById(req.params.id)
+        .populate('host', 'username freeFireName email')
+        .populate('playersJoined', 'username freeFireName stats')
+        .populate('observersJoined', 'username freeFireName stats')
+        .populate('pendingRegistrations.user', 'username freeFireName email');
 
-        // Save transaction record for host income
-        if (tournament.entryFee > 0) {
-          const hostTransaction = new Transaction({
-            user: hostUser._id,
-            type: 'deposit',
-            amount: tournament.entryFee,
-            status: 'completed',
-            description: `Entry fee income from player: ${user.username} for tournament: ${tournament.title}`
-          });
-          await hostTransaction.save();
-        }
-      }
+      return res.json({
+        status: 'pending_approval',
+        tournament: updatedTournament,
+        walletBalance: user.walletBalance
+      });
+    }
 
+    // 2. Direct registration for free match or observer
+    if (role === 'player') {
+      user.stats.matchesPlayed += 1;
       tournament.playersJoined.push(req.user.id);
     } else {
       // Register as observer (free registration)
@@ -200,14 +200,138 @@ router.post('/:id/join', auth, async (req, res) => {
     await tournament.save();
 
     const updatedTournament = await Tournament.findById(req.params.id)
-      .populate('host', 'username freeFireName')
+      .populate('host', 'username freeFireName email')
       .populate('playersJoined', 'username freeFireName stats')
-      .populate('observersJoined', 'username freeFireName stats');
+      .populate('observersJoined', 'username freeFireName stats')
+      .populate('pendingRegistrations.user', 'username freeFireName email');
 
     res.json({
+      status: 'registered',
       tournament: updatedTournament,
       walletBalance: user.walletBalance
     });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PUT api/tournament/:id/approve-registration
+// @desc    Approve a pending player registration (Host only)
+// @access  Private
+router.put('/:id/approve-registration', auth, async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ msg: 'Tournament not found' });
+    }
+
+    if (tournament.host.toString() !== req.user.id) {
+      return res.status(403).json({ msg: 'Access denied: Only the Host of this tournament can resolve registrations.' });
+    }
+
+    const pendingIndex = tournament.pendingRegistrations.findIndex(p => p.user.toString() === userId);
+    if (pendingIndex === -1) {
+      return res.status(404).json({ msg: 'Pending registration not found for this user.' });
+    }
+
+    const pendingItem = tournament.pendingRegistrations[pendingIndex];
+    
+    // Add to playersJoined or observersJoined
+    if (pendingItem.role === 'player') {
+      // Double check slots left
+      if (tournament.playersJoined.length >= tournament.slots) {
+        return res.status(400).json({ msg: 'Tournament player slots are full. Cannot approve player.' });
+      }
+      tournament.playersJoined.push(userId);
+      
+      // Update player's match count
+      const registeredUser = await User.findById(userId);
+      if (registeredUser) {
+        registeredUser.stats.matchesPlayed += 1;
+        await registeredUser.save();
+        
+        // Add transaction records for history
+        const transaction = new Transaction({
+          user: userId,
+          type: 'entry_fee',
+          amount: tournament.entryFee,
+          status: 'completed',
+          description: `Entry fee for tournament (Direct QR): ${tournament.title}`
+        });
+        await transaction.save();
+
+        // Credit host's wallet
+        const hostUser = await User.findById(tournament.host);
+        if (hostUser) {
+          hostUser.walletBalance += tournament.entryFee;
+          await hostUser.save();
+
+          const hostTransaction = new Transaction({
+            user: hostUser._id,
+            type: 'deposit',
+            amount: tournament.entryFee,
+            status: 'completed',
+            description: `Entry QR fee from player: ${registeredUser.username} for tournament: ${tournament.title}`
+          });
+          await hostTransaction.save();
+        }
+      }
+    } else {
+      tournament.observersJoined.push(userId);
+    }
+
+    // Remove from pending list
+    tournament.pendingRegistrations.splice(pendingIndex, 1);
+    await tournament.save();
+
+    const updatedTournament = await Tournament.findById(req.params.id)
+      .populate('host', 'username freeFireName email')
+      .populate('playersJoined', 'username freeFireName stats')
+      .populate('observersJoined', 'username freeFireName stats')
+      .populate('pendingRegistrations.user', 'username freeFireName email');
+
+    res.json(updatedTournament);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PUT api/tournament/:id/reject-registration
+// @desc    Reject a pending player registration (Host only)
+// @access  Private
+router.put('/:id/reject-registration', auth, async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ msg: 'Tournament not found' });
+    }
+
+    if (tournament.host.toString() !== req.user.id) {
+      return res.status(403).json({ msg: 'Access denied: Only the Host of this tournament can resolve registrations.' });
+    }
+
+    const pendingIndex = tournament.pendingRegistrations.findIndex(p => p.user.toString() === userId);
+    if (pendingIndex === -1) {
+      return res.status(404).json({ msg: 'Pending registration not found for this user.' });
+    }
+
+    // Remove from pending list
+    tournament.pendingRegistrations.splice(pendingIndex, 1);
+    await tournament.save();
+
+    const updatedTournament = await Tournament.findById(req.params.id)
+      .populate('host', 'username freeFireName email')
+      .populate('playersJoined', 'username freeFireName stats')
+      .populate('observersJoined', 'username freeFireName stats')
+      .populate('pendingRegistrations.user', 'username freeFireName email');
+
+    res.json(updatedTournament);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

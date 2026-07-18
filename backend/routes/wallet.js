@@ -259,112 +259,133 @@ router.post('/withdraw', auth, async (req, res) => {
   }
 });
 
-// @route   POST api/wallet/razorpay/order
-// @desc    Create a Razorpay payment order ID
+// @route   POST api/wallet/manual-deposit
+// @desc    Request manual wallet refill via UPI UTR
 // @access  Private
-router.post('/razorpay/order', auth, async (req, res) => {
-  const { amount } = req.body;
+router.post('/manual-deposit', auth, async (req, res) => {
+  const { amount, utr } = req.body;
   const numericAmount = Number(amount);
-  
+
   if (!amount || isNaN(numericAmount) || numericAmount < 10) {
-    return res.status(400).json({ msg: 'Minimum deposit amount is ₹10' });
+    return res.status(400).json({ msg: 'Minimum deposit is ₹10.' });
+  }
+
+  if (!utr || utr.trim().length < 8) {
+    return res.status(400).json({ msg: 'Valid transaction UTR/Reference ID is required.' });
   }
 
   try {
-    const options = {
-      amount: Math.round(numericAmount * 100), // in paise (e.g. ₹10 = 1000 paise)
-      currency: 'INR',
-      receipt: `receipt_order_${Date.now()}`
-    };
-
-    if (razorpayInstance) {
-      const order = await razorpayInstance.orders.create(options);
-      return res.json({
-        success: true,
-        orderId: order.id,
-        amount: order.amount,
-        keyId: process.env.RAZORPAY_KEY_ID
-      });
-    } else {
-      // Mock Sandbox response fallback
-      console.log('[Wallet] Razorpay credentials missing. Emulating sandbox order.');
-      const mockOrderId = `order_mock_${Math.random().toString(36).substr(2, 9)}`;
-      return res.json({
-        success: true,
-        orderId: mockOrderId,
-        amount: options.amount,
-        keyId: 'rzp_test_mockkey12345',
-        isSandbox: true
-      });
-    }
-  } catch (err) {
-    console.error('Razorpay Order creation error:', err.message);
-    res.status(500).send('Razorpay Init Server Error');
-  }
-});
-
-// @route   POST api/wallet/razorpay/verify
-// @desc    Verify Razorpay Payment signature and credit wallet balance
-// @access  Private
-router.post('/razorpay/verify', auth, async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
-
-  if (!razorpay_order_id || !razorpay_payment_id || !amount) {
-    return res.status(400).json({ msg: 'Missing verification credentials' });
-  }
-
-  try {
-    let verified = false;
-
-    if (razorpayInstance && razorpay_signature) {
-      const body = razorpay_order_id + '|' + razorpay_payment_id;
-      const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(body.toString())
-        .digest('hex');
-
-      if (expectedSignature === razorpay_signature) {
-        verified = true;
-      }
-    } else {
-      // Sandbox verify bypass
-      console.log('[Wallet] Razorpay Sandbox payment verification bypass');
-      if (razorpay_order_id.startsWith('order_mock_') || razorpay_payment_id.startsWith('pay_mock_')) {
-        verified = true;
-      }
-    }
-
-    if (!verified) {
-      return res.status(400).json({ msg: 'Payment verification failed' });
-    }
-
-    // Process Credit transaction
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    user.walletBalance += Number(amount);
-    await user.save();
-
+    // Create a pending transaction record
     const transaction = new Transaction({
       user: req.user.id,
       type: 'deposit',
-      amount: Number(amount),
-      status: 'completed',
-      description: `Deposited via Razorpay (${razorpay_payment_id})`
+      amount: numericAmount,
+      status: 'pending', // Pending admin verification
+      description: `Manual UPI deposit request (UTR: ${utr})`
     });
     await transaction.save();
 
     res.json({
-      success: true,
-      walletBalance: user.walletBalance,
+      msg: 'Deposit request submitted successfully! Credits will be updated once verified by admin.',
       transaction
     });
-
   } catch (err) {
-    console.error('Razorpay Verify error:', err.message);
-    res.status(500).send('Razorpay Verification Server Error');
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PUT api/wallet/transactions/:id/approve
+// @desc    Approve a pending manual deposit transaction (Admin only)
+// @access  Private
+router.put('/transactions/:id/approve', auth, async (req, res) => {
+  try {
+    const userObj = await User.findById(req.user.id);
+    if (userObj.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied: Only Admins can approve wallet deposits.' });
+    }
+
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ msg: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({ msg: 'Transaction is already resolved.' });
+    }
+
+    // Approve transaction
+    transaction.status = 'completed';
+    await transaction.save();
+
+    // Credit user's wallet
+    const targetUser = await User.findById(transaction.user);
+    if (targetUser) {
+      targetUser.walletBalance += transaction.amount;
+      await targetUser.save();
+    }
+
+    res.json(transaction);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PUT api/wallet/transactions/:id/reject
+// @desc    Reject a pending manual deposit transaction (Admin only)
+// @access  Private
+router.put('/transactions/:id/reject', auth, async (req, res) => {
+  try {
+    const userObj = await User.findById(req.user.id);
+    if (userObj.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied: Only Admins can reject wallet deposits.' });
+    }
+
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ msg: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({ msg: 'Transaction is already resolved.' });
+    }
+
+    // Reject transaction
+    transaction.status = 'failed';
+    transaction.description += ' (Rejected by Admin)';
+    await transaction.save();
+
+    res.json(transaction);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET api/wallet/pending-deposits
+// @desc    Get all pending manual deposit transactions (Admin only)
+// @access  Private
+router.get('/pending-deposits', auth, async (req, res) => {
+  try {
+    const userObj = await User.findById(req.user.id);
+    if (userObj.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied.' });
+    }
+
+    const pendingTransactions = await Transaction.find({ type: 'deposit', status: 'pending' })
+      .populate('user', 'username email freeFireName')
+      .sort({ createdAt: -1 });
+
+    res.json(pendingTransactions);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
 });
 

@@ -5,21 +5,6 @@ import { AuthContext } from '../context/AuthContext';
 import { Wallet, ArrowDownLeft, ArrowUpRight, Clock, Plus, Landmark, CheckCircle, AlertTriangle, ShieldCheck, CreditCard, Send, X } from 'lucide-react';
 import gsap from 'gsap';
 
-// Helper to inject Razorpay checkout script
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
 const WalletPage = () => {
   const { user, syncWalletBalance } = useContext(AuthContext);
   const [history, setHistory] = useState([]);
@@ -33,9 +18,8 @@ const WalletPage = () => {
   // Withdrawal strictly asks for UPI ID
   const [upiId, setUpiId] = useState('');
   
-  // Razorpay / Payment states
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [showSandboxLoader, setShowSandboxLoader] = useState(false);
+  // Manual deposit UTR state
+  const [utr, setUtr] = useState('');
   
   // Visual feedbacks
   const [errorMsg, setErrorMsg] = useState('');
@@ -61,10 +45,6 @@ const WalletPage = () => {
 
   useEffect(() => {
     fetchHistory();
-    // Load Razorpay script
-    loadRazorpayScript().then((loaded) => {
-      setRazorpayLoaded(loaded);
-    });
   }, []);
 
   // GSAP Balance Card pop on mount
@@ -119,103 +99,31 @@ const WalletPage = () => {
       return;
     }
 
+    if (!utr || utr.trim().length < 8) {
+      setErrorMsg('Please specify a valid transaction UTR / Reference ID.');
+      return;
+    }
+
     setProcessing(true);
 
     try {
-      // 1. Initialize Razorpay order from backend
-      const orderRes = await API.post('/wallet/razorpay/order', { amount: parsedAmount });
+      const res = await API.post('/wallet/manual-deposit', { 
+        amount: parsedAmount,
+        utr: utr.trim()
+      });
       
-      if (!orderRes.data.success) {
-        throw new Error('Order creation failed on server');
-      }
-
-      const { orderId, keyId, isSandbox } = orderRes.data;
-
-      // 2. Sandbox bypass verification
-      if (isSandbox || !razorpayLoaded) {
-        console.log('[Payment] Razorpay keys missing. Simulating sandbox payment...');
-        setShowSandboxLoader(true);
-        
-        setTimeout(async () => {
-          try {
-            const verifyRes = await API.post('/wallet/razorpay/verify', {
-              razorpay_order_id: orderId,
-              razorpay_payment_id: `pay_mock_${Math.random().toString(36).substr(2, 9)}`,
-              amount: parsedAmount
-            });
-
-            syncWalletBalance(verifyRes.data.walletBalance);
-            setSuccessMsg(`Successfully credited ₹${parsedAmount.toFixed(2)} to wallet! (Sandbox Mode)`);
-            setAmount('');
-            fetchHistory();
-            setShowSandboxLoader(false);
-            
-            setTimeout(() => {
-              setShowDeposit(false);
-              setSuccessMsg('');
-            }, 1800);
-          } catch (verErr) {
-            setErrorMsg('Sandbox payment validation failed.');
-            setShowSandboxLoader(false);
-          }
-        }, 1500);
-
-      } else {
-        // 3. Open Real Razorpay Checkout modal
-        const options = {
-          key: keyId,
-          amount: orderRes.data.amount,
-          currency: 'INR',
-          name: 'BL Battle',
-          description: 'Wallet Cash Load',
-          image: '/logo.jpg',
-          order_id: orderId,
-          handler: async (response) => {
-            try {
-              setProcessing(true);
-              const verifyRes = await API.post('/wallet/razorpay/verify', {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                amount: parsedAmount
-              });
-
-              syncWalletBalance(verifyRes.data.walletBalance);
-              setSuccessMsg(`Successfully credited ₹${parsedAmount.toFixed(2)} to your wallet!`);
-              setAmount('');
-              fetchHistory();
-              
-              setTimeout(() => {
-                setShowDeposit(false);
-                setSuccessMsg('');
-              }, 1800);
-            } catch (err) {
-              setErrorMsg(err.response?.data?.msg || 'Verification failed. Please contact support.');
-            } finally {
-              setProcessing(false);
-            }
-          },
-          prefill: {
-            name: user.username,
-            email: user.email
-          },
-          theme: {
-            color: '#35D5FA'
-          },
-          modal: {
-            ondismiss: () => {
-              setProcessing(false);
-            }
-          }
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      }
-
+      setSuccessMsg(res.data.msg);
+      setAmount('');
+      setUtr('');
+      fetchHistory();
+      
+      setTimeout(() => {
+        setShowDeposit(false);
+        setSuccessMsg('');
+      }, 3500);
     } catch (err) {
-      console.error(err);
-      setErrorMsg(err.response?.data?.msg || 'Failed to initialize payment gateway.');
+      setErrorMsg(err.response?.data?.msg || 'Failed to submit deposit request.');
+    } finally {
       setProcessing(false);
     }
   };
@@ -452,41 +360,58 @@ const WalletPage = () => {
             {errorMsg && <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-xs font-semibold text-red-400">{errorMsg}</div>}
             {successMsg && <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 p-2.5 text-xs font-semibold text-green-400 flex items-center"><CheckCircle size={14} className="mr-1"/>{successMsg}</div>}
 
-            {showSandboxLoader ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <span className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-gaming-accent border-t-transparent" />
-                <p className="text-xs font-bold text-white">Connecting Checkout Sandbox...</p>
-                <p className="text-[10px] text-gaming-text mt-1">Authorizing mock credentials</p>
+            <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div className="flex flex-col items-center space-y-2 rounded-xl bg-gaming-dark/60 border border-gaming-border p-4">
+                <p className="text-[10px] font-black uppercase text-gaming-accent tracking-wider">Scan QR to pay admin</p>
+                <img
+                  src="/qr_durga.png"
+                  alt="Admin UPI Payment QR Code"
+                  className="w-36 h-36 object-contain rounded-lg border border-gaming-border bg-white p-1 shadow-md"
+                />
+                <div className="text-center">
+                  <p className="text-[10px] font-extrabold text-white">
+                    Account Name: <span className="text-gaming-accent">PEDDA PUJARLA KAMMA DURGA PRASAD</span>
+                  </p>
+                  <p className="text-[9px] text-gaming-text mt-0.5">Pay via PhonePe, Google Pay, or Paytm UPI</p>
+                </div>
               </div>
-            ) : (
-              <form onSubmit={handleDepositSubmit} className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Amount to Deposit (₹)</label>
-                  <input
-                    type="number"
-                    placeholder="Min 10"
-                    min="10"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
-                    required
-                    disabled={processing}
-                  />
-                </div>
 
-                <div className="rounded-lg bg-gaming-dark/40 border border-gaming-border p-3 text-[10px] text-gaming-text leading-relaxed">
-                  Secured checkout. Minimum amount to deposit is ₹10.
-                </div>
-
-                <button
-                  type="submit"
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Amount Deposited (₹)</label>
+                <input
+                  type="number"
+                  placeholder="Min 10"
+                  min="10"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                  required
                   disabled={processing}
-                  className="w-full rounded-xl bg-gaming-accent py-2.5 text-xs font-extrabold text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
-                >
-                  {processing ? 'Connecting Gateway...' : 'Deposit credits'}
-                </button>
-              </form>
-            )}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">Transaction UTR / Ref ID (12 Digits)</label>
+                <input
+                  type="text"
+                  maxLength={16}
+                  placeholder="e.g. 612345678901"
+                  value={utr}
+                  onChange={(e) => setUtr(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent"
+                  required
+                  disabled={processing}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={processing || utr.length < 8}
+                className="w-full rounded-xl bg-gaming-accent py-2.5 text-xs font-extrabold text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-50"
+              >
+                {processing ? 'Submitting request...' : 'Submit Deposit Receipt'}
+              </button>
+            </form>
           </div>
         </div>
       )}

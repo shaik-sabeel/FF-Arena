@@ -120,6 +120,30 @@ const TournamentSchema = new mongoose.Schema({
     kills: { type: Number, default: 0 },
     prizeWon: { type: Number, default: 0 }
   }],
+  paymentQrOption: {
+    type: String,
+    enum: ['qr_durga', 'qr_kowshik'],
+    default: 'qr_durga'
+  },
+  pendingRegistrations: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    role: {
+      type: String,
+      enum: ['player', 'observer'],
+      default: 'player'
+    },
+    utr: {
+      type: String,
+      required: true
+    },
+    submittedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

@@ -83,13 +83,13 @@ const Chatbot = () => {
   // Response mapping based on queries or rules
   const rules = [
     {
-      keywords: /(deposit|add money|payment|pay|cash|razorpay|upi)/i,
+      keywords: /(deposit|add money|payment|pay|cash|upi)/i,
       title: "💳 Deposits & Wallet Options",
       response: `To deposit money into your account:
 1. Navigate to the **Wallet** page.
-2. Enter the amount of coins you want to purchase (1 Coin = 1 INR).
-3. Click **Add Money** to trigger the secure **Razorpay Gateway**.
-4. Complete payment using UPI, NetBanking, Credit/Debit cards. Your coins are credited instantly!`,
+2. Scan the displayed admin UPI QR code.
+3. Make the transfer, copy the 12-digit transaction UTR / Reference ID.
+4. Input the amount and UTR in the deposit form and submit. Your coins are credited after admin audit!`,
       navigation: { label: "Go to Wallet", path: "/wallet" }
     },
     {

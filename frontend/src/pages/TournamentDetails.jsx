@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import API from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
-import { Award, Calendar, Users, MapPin, Swords, ShieldCheck, Plus, ListPlus, Send, XCircle, CheckCircle, HelpCircle, Eye, ShieldAlert } from 'lucide-react';
+import { Award, Calendar, Users, MapPin, Swords, ShieldCheck, Plus, ListPlus, Send, XCircle, CheckCircle, HelpCircle, Eye, ShieldAlert, Clock } from 'lucide-react';
 import gsap from 'gsap';
 
 const TournamentDetails = () => {
@@ -210,6 +210,9 @@ const TournamentDetails = () => {
     }
   }, [tournament]);
 
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [utr, setUtr] = useState('');
+
   const handleJoin = async (role = 'player') => {
     if (!user) {
       navigate('/login');
@@ -221,25 +224,67 @@ const TournamentDetails = () => {
       return;
     }
 
-    if (role === 'player' && user.walletBalance < tournament.entryFee) {
-      setError('Insufficient wallet balance. Please add cash in wallet tab.');
+    if (role === 'observer') {
+      await handleJoinSubmit('observer');
       return;
     }
 
+    if (tournament.entryFee > 0) {
+      setShowJoinModal(true);
+    } else {
+      await handleJoinSubmit('player');
+    }
+  };
+
+  const handleJoinSubmit = async (role = 'player') => {
     setJoining(true);
     setError('');
     try {
-      const res = await API.post(`/tournament/${id}/join`, { role });
+      const res = await API.post(`/tournament/${id}/join`, { 
+        role, 
+        paymentMethod: 'manual', 
+        utr: tournament.entryFee > 0 ? utr : undefined 
+      });
       setTournament(res.data.tournament);
       syncWalletBalance(res.data.walletBalance);
-      setJoinSuccess(`Successfully joined this match lobby as a ${role === 'observer' ? 'Spectator' : 'Player'}!`);
       
-      // Clear success alert after time
-      setTimeout(() => setJoinSuccess(''), 2500);
+      if (res.data.status === 'pending_approval') {
+        setJoinSuccess('Registration request submitted! Awaiting Host approval for transaction UTR.');
+      } else {
+        setJoinSuccess(`Successfully joined this match lobby as a ${role === 'observer' ? 'Spectator' : 'Player'}!`);
+      }
+      setShowJoinModal(false);
+      setUtr('');
+      setTimeout(() => setJoinSuccess(''), 4000);
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to join tournament');
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleApproveRegistration = async (targetUserId) => {
+    setError('');
+    try {
+      const res = await API.put(`/tournament/${id}/approve-registration`, { userId: targetUserId });
+      setTournament(res.data);
+      setJoinSuccess('Player entry approved successfully!');
+      setTimeout(() => setJoinSuccess(''), 2500);
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Failed to approve registration');
+    }
+  };
+
+  const handleRejectRegistration = async (targetUserId) => {
+    if (!window.confirm('Are you sure you want to REJECT this registration entry?')) return;
+    setError('');
+    try {
+      const res = await API.put(`/tournament/${id}/reject-registration`, { userId: targetUserId });
+      setTournament(res.data);
+      setJoinSuccess('Player entry rejected.');
+      setTimeout(() => setJoinSuccess(''), 2500);
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Failed to reject registration');
     }
   };
 
@@ -352,6 +397,11 @@ const TournamentDetails = () => {
     return oId.toString() === userId?.toString();
   });
   const hasJoined = hasJoinedPlayer || hasJoinedObserver;
+  const pendingItem = tournament.pendingRegistrations?.find((p) => {
+    const pUserId = p.user?._id || p.user;
+    return pUserId?.toString() === userId?.toString();
+  });
+  const isPending = !!pendingItem;
   const hasVoted = tournament.observerVotes?.some((v) => {
     const vObs = v.observer?._id || v.observer;
     return vObs?.toString() === userId?.toString();
@@ -543,6 +593,16 @@ const TournamentDetails = () => {
                     Champion Winner: <strong className="text-gaming-yellow">@{tournament.winner.username}</strong>
                   </p>
                 )}
+              </div>
+            ) : isPending ? (
+              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-center">
+                <p className="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-1 flex items-center justify-center">
+                  <Clock className="animate-pulse mr-1" size={14} />
+                  Registration Pending
+                </p>
+                <p className="text-[10px] text-gaming-text">
+                  The Host is verifying your payment UTR: <strong className="text-white">{pendingItem.utr}</strong>.
+                </p>
               </div>
             ) : hasJoined ? (
               <div className="space-y-4">
@@ -801,6 +861,65 @@ const TournamentDetails = () => {
                 </form>
               )}
 
+              {/* Pending Manual Registrations Review Queue */}
+              {canManage && tournament.status === 'upcoming' && tournament.pendingRegistrations && tournament.pendingRegistrations.length > 0 && (
+                <div className="border-t border-gaming-border/60 pt-4 space-y-4">
+                  <div className="border-b border-gaming-border/40 pb-2 flex items-center justify-between">
+                    <p className="text-xs font-black uppercase text-gaming-accent flex items-center">
+                      <Clock size={13} className="mr-1.5 animate-pulse text-gaming-accent" />
+                      Pending Registrations ({tournament.pendingRegistrations.length})
+                    </p>
+                    <span className="text-[9px] bg-gaming-accent/10 border border-gaming-accent/25 px-2 py-0.5 rounded text-white font-bold uppercase">UTR Verification</span>
+                  </div>
+
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    {tournament.pendingRegistrations.map((pending, idx) => (
+                      <div 
+                        key={idx} 
+                        className="rounded-xl border border-gaming-border/80 bg-gaming-dark/45 p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-extrabold text-white">@{pending.user?.username || 'Unknown User'}</span>
+                            <span className="text-[9px] bg-gaming-border px-1.5 py-0.5 rounded text-gaming-text font-semibold uppercase">{pending.role}</span>
+                          </div>
+                          <p className="text-[10px] text-gaming-text">
+                            Free Fire: <strong className="text-white">{pending.user?.freeFireName || 'N/A'}</strong> ({pending.user?.freeFireId || 'N/A'})
+                          </p>
+                          <p className="text-[10px] text-gaming-text">
+                            Email: <span className="text-white select-all">{pending.user?.email || 'N/A'}</span>
+                          </p>
+                          <p className="text-[10px] text-gaming-text">
+                            Submitted: <span className="text-white">{new Date(pending.submittedAt).toLocaleString()}</span>
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-start md:items-end justify-between gap-2.5">
+                          <div>
+                            <span className="block text-[8px] font-black uppercase tracking-wider text-gaming-text">Transaction UTR</span>
+                            <strong className="text-gaming-yellow text-sm font-mono tracking-widest select-all">{pending.utr}</strong>
+                          </div>
+                          <div className="flex space-x-2 w-full md:w-auto">
+                            <button
+                              onClick={() => handleRejectRegistration(pending.user?._id || pending.user)}
+                              className="rounded-lg bg-red-600/25 border border-red-500/35 hover:bg-red-600/40 px-3 py-1.5 text-[10px] font-bold text-red-400 transition"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              onClick={() => handleApproveRegistration(pending.user?._id || pending.user)}
+                              className="rounded-lg bg-green-500/20 border border-green-400/35 hover:bg-green-500/35 px-3 py-1.5 text-[10px] font-bold text-green-400 transition flex items-center"
+                            >
+                              Approve Entry
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Automated Bot Payout Panel */}
               {tournament.status === 'ongoing' && (
                 <div className="space-y-4">
@@ -892,6 +1011,92 @@ const TournamentDetails = () => {
         </div>
 
       </div>
+
+      {/* Join Match Checkout Modal */}
+      {showJoinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md glass-panel border border-gaming-accent/25 rounded-2xl p-6 shadow-neon relative space-y-5 animate-scale-in">
+            <button
+              onClick={() => {
+                setShowJoinModal(false);
+                setUtr('');
+              }}
+              className="absolute top-4 right-4 text-gaming-text hover:text-white transition-colors"
+            >
+              <XCircle size={20} />
+            </button>
+
+            <div className="text-center border-b border-gaming-border pb-3">
+              <h3 className="text-lg font-gaming font-black text-white uppercase tracking-wider">Lobby Entry Checkout</h3>
+              <p className="text-xs text-gaming-text mt-1">Tournament: {tournament.title}</p>
+            </div>
+
+            <div className="flex justify-between items-center rounded-xl bg-gaming-dark/60 border border-gaming-border/50 p-4">
+              <span className="text-xs font-bold text-gaming-text uppercase tracking-wider">Entry Fee</span>
+              <span className="text-xl font-gaming font-black text-white">₹{tournament.entryFee}</span>
+            </div>
+
+            {/* Manual QR instructions */}
+            <div className="rounded-xl border border-gaming-border bg-gaming-dark/70 p-4 space-y-4">
+              <div className="flex flex-col items-center space-y-2">
+                <p className="text-[10px] font-black uppercase text-gaming-accent tracking-wider">Scan QR to pay ₹{tournament.entryFee}</p>
+                <img
+                  src={tournament.paymentQrOption === 'qr_kowshik' ? '/qr_kowshik.png' : '/qr_durga.png'}
+                  alt="UPI Payment QR Code"
+                  className="w-36 h-36 object-contain rounded-lg border border-gaming-border bg-white p-1 shadow-md"
+                />
+                <div className="text-center">
+                  <p className="text-[10px] font-extrabold text-white">
+                    Account Name:{' '}
+                    <span className="text-gaming-accent">
+                      {tournament.paymentQrOption === 'qr_kowshik' 
+                        ? 'KANAGIRI KOWSHIK MANI DEEP REDDY' 
+                        : 'PEDDA PUJARLA KAMMA DURGA PRASAD'}
+                    </span>
+                  </p>
+                  <p className="text-[9px] text-gaming-text mt-0.5">Scan using PhonePe, Google Pay, or Paytm</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 border-t border-gaming-border/60 pt-3">
+                <label className="block text-[9px] font-black uppercase tracking-wider text-gaming-text">
+                  Enter Transaction UTR / Ref ID (12 Digits)
+                </label>
+                <input
+                  type="text"
+                  maxLength={16}
+                  placeholder="e.g. 612345678901"
+                  value={utr}
+                  onChange={(e) => setUtr(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/65 py-2.5 px-3 text-xs font-semibold text-white outline-none focus:border-gaming-accent"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowJoinModal(false);
+                  setUtr('');
+                }}
+                className="w-1/2 rounded-xl border border-gaming-border py-2.5 text-xs font-bold text-gaming-text hover:bg-gaming-card/85 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={joining || utr.length < 8}
+                onClick={() => handleJoinSubmit('player')}
+                className="w-1/2 rounded-xl bg-gaming-accent py-2.5 text-xs font-black text-black shadow-neon disabled:opacity-50 transition"
+              >
+                {joining ? 'Submitting...' : 'Confirm Entry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
