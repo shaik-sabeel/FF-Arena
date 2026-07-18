@@ -364,15 +364,15 @@ const WalletPage = () => {
               <div className="flex flex-col items-center space-y-2 rounded-xl bg-gaming-dark/60 border border-gaming-border p-4">
                 <p className="text-[10px] font-black uppercase text-gaming-accent tracking-wider">Scan QR to pay admin</p>
                 <img
-                  src="/qr_durga.png"
+                  src="/qr_sabeel.png"
                   alt="Admin UPI Payment QR Code"
                   className="w-64 h-auto object-contain rounded-lg border border-gaming-border bg-white p-1.5 shadow-md"
                 />
                 <div className="text-center">
                   <p className="text-[10px] font-extrabold text-white">
-                    Account Name: <span className="text-gaming-accent">PEDDA PUJARLA KAMMA DURGA PRASAD</span>
+                    Account Name: <span className="text-gaming-accent">SHAIK AENUGULA MOHAMMAD SABEEL</span>
                   </p>
-                  <p className="text-[9px] text-gaming-text mt-0.5">Pay via PhonePe, Google Pay, or Paytm UPI</p>
+                  <p className="text-[9px] text-gaming-text mt-0.5">Pay via Kotak 811 or any UPI App</p>
                 </div>
               </div>
 

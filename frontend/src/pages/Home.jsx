@@ -567,6 +567,7 @@ const Home = () => {
                   >
                     <option value="qr_durga">Durga Prasad (PhonePe)</option>
                     <option value="qr_kowshik">Kowshik Reddy (PhonePe)</option>
+                    <option value="qr_sabeel">Mohammad Sabeel (Kotak Bank)</option>
                   </select>
                 </div>
               )}
