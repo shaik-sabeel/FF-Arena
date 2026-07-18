@@ -290,6 +290,28 @@ router.post('/manual-deposit', auth, async (req, res) => {
     });
     await transaction.save();
 
+    // Send Telegram Notification to Admin
+    try {
+      const axios = require('axios');
+      const botToken = '8836741801:AAFyaSg4679txpxZ69ji9lAwGEJICx0ZzgA';
+      const chatId = '6480716218';
+      const text = `🔌 *New Wallet Deposit Request* \n\n` +
+                   `👤 *User:* @${user.username} (${user.freeFireName || 'No FF Name'})\n` +
+                   `📧 *Email:* ${user.email}\n` +
+                   `💰 *Amount:* ₹${numericAmount.toFixed(2)}\n` +
+                   `🔑 *Transaction UTR:* \`${utr.trim()}\`\n\n` +
+                   `⚠️ _Please log in to your admin board to verify and approve/reject._`;
+
+      await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      });
+      console.log('Telegram deposit notification sent.');
+    } catch (telegramErr) {
+      console.error('Failed to send Telegram notification:', telegramErr.message);
+    }
+
     res.json({
       msg: 'Deposit request submitted successfully! Credits will be updated once verified by admin.',
       transaction

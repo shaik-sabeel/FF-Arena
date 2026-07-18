@@ -342,7 +342,7 @@ const WalletPage = () => {
         >
           <div
             ref={depositModalRef}
-            className="w-full max-w-md glass-panel rounded-2xl border border-gaming-accent/20 p-6 shadow-neon"
+            className="w-full max-w-md glass-panel rounded-2xl border border-gaming-accent/20 p-6 shadow-neon max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between border-b border-gaming-border pb-3">
