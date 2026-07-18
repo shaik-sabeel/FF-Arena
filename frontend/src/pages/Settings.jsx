@@ -48,10 +48,7 @@ const SettingsPage = () => {
   const [kycDob, setKycDob] = useState(
     user?.kycDetails?.dob ? new Date(user.kycDetails.dob).toISOString().split('T')[0] : ''
   );
-  const [kycPan, setKycPan] = useState(user?.kycDetails?.pan || '');
-  const [kycDocType, setKycDocType] = useState(user?.kycDetails?.documentType || 'Aadhaar Card');
   const [kycUpi, setKycUpi] = useState(user?.kycDetails?.upiId || '');
-  const [mockFileUploaded, setMockFileUploaded] = useState(!!user?.kycDetails?.documentUrl);
   
   // KYC Feedbacks
   const [kycError, setKycError] = useState('');
@@ -182,7 +179,7 @@ const SettingsPage = () => {
     setKycError('');
     setKycSuccess('');
 
-    if (!kycFullName || !kycDob || !kycDocType || !kycUpi) {
+    if (!kycFullName || !kycDob || !kycUpi) {
       setKycError('Please complete all required fields.');
       return;
     }
@@ -199,15 +196,14 @@ const SettingsPage = () => {
       await API.post('/user/kyc', {
         fullName: kycFullName,
         dob: kycDob,
-        pan: kycPan,
-        documentType: kycDocType,
-        documentUrl: 'mock_doc_path_submission',
+        pan: '',
+        documentType: 'Self Declaration',
+        documentUrl: 'self_declared',
         upiId: kycUpi
       });
 
-      setKycSuccess('KYC documents submitted successfully! Waiting for host verification.');
+      setKycSuccess('Verification profile details submitted successfully! Awaiting Host verification.');
       await refreshUser(); // Sync user state in context
-      setMockFileUploaded(true);
     } catch (err) {
       setKycError(err.response?.data?.msg || 'KYC submission failed. Please try again.');
     } finally {
@@ -381,33 +377,12 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              {/* Upload Placeholder */}
-              <div className="rounded-xl border border-dashed border-gaming-border p-5 text-center bg-gaming-dark/30 hover:bg-gaming-dark/50 transition">
-                <Upload size={24} className="mx-auto mb-2 text-gaming-text" />
-                <p className="text-xs font-bold text-white">Upload Scanned Copy / Photo of Document</p>
-                <p className="text-[9px] text-gaming-text mt-1">JPEG, PNG or PDF formats. Max size 5MB.</p>
-                
-                <div className="mt-3 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setMockFileUploaded(true)}
-                    className={`rounded-lg px-3 py-1.5 text-[10px] font-bold border transition ${
-                      mockFileUploaded 
-                        ? 'bg-green-500/10 text-green-400 border-green-500/25' 
-                        : 'bg-gaming-border text-white border-gaming-border hover:bg-gaming-border/80 cursor-pointer'
-                    }`}
-                  >
-                    {mockFileUploaded ? '✓ Document Loaded' : 'Simulate File Select'}
-                  </button>
-                </div>
-              </div>
-
               <button
                 type="submit"
-                disabled={submittingKyc || !mockFileUploaded}
+                disabled={submittingKyc}
                 className="w-full rounded-xl bg-gaming-accent py-3 text-xs font-black text-black shadow-neon hover:shadow-neon-hover transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {submittingKyc ? 'Submitting KYC Verification...' : 'Submit Verification Profile'}
+                {submittingKyc ? 'Submitting Verification...' : 'Submit Verification Profile'}
               </button>
             </form>
           )}
@@ -439,9 +414,7 @@ const SettingsPage = () => {
                     <div className="grid grid-cols-2 gap-2 text-[10px] text-gaming-text">
                       <p><strong>Legal Name:</strong> <span className="text-white font-semibold">{item.kycDetails?.fullName}</span></p>
                       <p><strong>DOB:</strong> <span className="text-white font-semibold">{new Date(item.kycDetails?.dob).toLocaleDateString()}</span></p>
-                      <p><strong>Doc Type:</strong> <span className="text-white font-semibold">{item.kycDetails?.documentType}</span></p>
-                      <p><strong>UPI ID:</strong> <span className="text-white font-semibold font-mono">{item.kycDetails?.upiId}</span></p>
-                      <p className="col-span-2"><strong>PAN Card:</strong> <span className="text-white font-semibold font-mono">{item.kycDetails?.pan || 'Not Provided'}</span></p>
+                      <p className="col-span-2"><strong>UPI ID:</strong> <span className="text-white font-semibold font-mono">{item.kycDetails?.upiId}</span></p>
                     </div>
 
                     {/* Rejection input */}
