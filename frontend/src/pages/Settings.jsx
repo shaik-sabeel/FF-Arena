@@ -333,34 +333,7 @@ const SettingsPage = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
-                    PAN Card (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ABCDE1234F"
-                    value={kycPan}
-                    onChange={(e) => setKycPan(e.target.value.toUpperCase())}
-                    className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent focus:bg-gaming-dark/60 font-mono"
-                  />
-                </div>
 
-                <div>
-                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
-                    Select Verification Document Type
-                  </label>
-                  <select
-                    value={kycDocType}
-                    onChange={(e) => setKycDocType(e.target.value)}
-                    className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent focus:bg-gaming-dark/60"
-                  >
-                    <option value="Aadhaar Card" className="bg-gaming-dark">Aadhaar Card</option>
-                    <option value="Voter ID" className="bg-gaming-dark">Voter ID Card</option>
-                    <option value="Driver License" className="bg-gaming-dark">Driver's License</option>
-                    <option value="Passport" className="bg-gaming-dark">Passport</option>
-                  </select>
-                </div>
 
                 <div className="sm:col-span-2">
                   <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
@@ -541,19 +514,21 @@ const SettingsPage = () => {
                 />
               </div>
 
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
-                  Simulation User Role
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent focus:bg-gaming-dark/60"
-                >
-                  <option value="user" className="bg-gaming-dark">Standard User</option>
-                  <option value="host" className="bg-gaming-dark">Tournament Host / Admin</option>
-                </select>
-              </div>
+              {user?.role === 'admin' && (
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
+                    Simulation User Role
+                  </label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="w-full rounded-xl border border-gaming-border/80 bg-gaming-card/40 py-2.5 px-3.5 text-sm font-medium text-white outline-none focus:border-gaming-accent focus:bg-gaming-dark/60"
+                  >
+                    <option value="user" className="bg-gaming-dark">Standard User</option>
+                    <option value="host" className="bg-gaming-dark">Tournament Host / Admin</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <button
