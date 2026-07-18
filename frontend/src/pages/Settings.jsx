@@ -430,7 +430,7 @@ const SettingsPage = () => {
           <div className="glass-panel rounded-2xl border border-gaming-border p-5 bg-gaming-accent/5 shadow-glass-cyan">
             <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-white border-b border-gaming-border pb-2 flex items-center">
               <Clock className="mr-1.5 text-gaming-accent" size={16} />
-              Admin Board: Wallet Deposits Review ({pendingDeposits.length})
+              Admin Board: Wallet Transactions Review ({pendingDeposits.length})
             </h2>
 
             {loadingDeposits ? (
@@ -438,20 +438,31 @@ const SettingsPage = () => {
                 <span className="h-6 w-6 animate-spin rounded-full border-2 border-gaming-accent border-t-transparent" />
               </div>
             ) : pendingDeposits.length === 0 ? (
-              <p className="text-xs text-gaming-text py-4 text-center">No pending wallet refills in queue.</p>
+              <p className="text-xs text-gaming-text py-4 text-center">No pending transactions in queue.</p>
             ) : (
               <div className="space-y-4">
                 {pendingDeposits.map((item) => (
                   <div key={item._id} className="rounded-xl border border-gaming-border bg-gaming-card/65 p-4 space-y-3">
                     <div className="flex justify-between items-center text-xs border-b border-gaming-border/60 pb-2">
-                      <p className="font-bold text-white">User: <span className="text-gaming-accent">@{item.user?.username}</span></p>
+                      <p className="font-bold text-white">
+                        User: <span className="text-gaming-accent">@{item.user?.username}</span>
+                        <span className={`ml-2 px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
+                          item.type === 'withdraw' ? 'bg-red-500/10 text-red-400 border border-red-500/25' : 'bg-green-500/10 text-green-400 border border-green-500/25'
+                        }`}>
+                          {item.type === 'withdraw' ? 'Withdrawal' : 'Deposit'}
+                        </span>
+                      </p>
                       <p className="text-[10px] text-gaming-text">Requested: {new Date(item.createdAt).toLocaleString()}</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[10px] text-gaming-text">
                       <p><strong>Free Fire IGN:</strong> <span className="text-white font-semibold">{item.user?.freeFireName || 'N/A'}</span></p>
-                      <p><strong>Refill Amount:</strong> <span className="text-gaming-accent font-extrabold text-sm">₹{item.amount}</span></p>
-                      <p className="col-span-2"><strong>Transaction UTR:</strong> <span className="text-gaming-yellow font-mono font-black text-sm select-all tracking-wider">{item.description?.split('UTR: ')[1]?.replace(')', '') || 'N/A'}</span></p>
+                      <p><strong>Amount:</strong> <span className="text-gaming-accent font-extrabold text-sm">₹{item.amount}</span></p>
+                      {item.type === 'withdraw' ? (
+                        <p className="col-span-2"><strong>Payout UPI ID:</strong> <span className="text-gaming-yellow font-mono font-black text-sm select-all tracking-wider">{item.description?.split('UPI: ')[1]?.replace(')', '') || 'N/A'}</span></p>
+                      ) : (
+                        <p className="col-span-2"><strong>Transaction UTR:</strong> <span className="text-gaming-yellow font-mono font-black text-sm select-all tracking-wider">{item.description?.split('UTR: ')[1]?.replace(')', '') || 'N/A'}</span></p>
+                      )}
                     </div>
 
                     <div className="flex gap-2.5 pt-1">
@@ -459,13 +470,13 @@ const SettingsPage = () => {
                         onClick={() => handleRejectDeposit(item._id)}
                         className="flex-1 rounded-lg bg-red-600/20 border border-red-500/35 hover:bg-red-600/35 py-1.5 text-[10px] font-bold text-red-400 transition cursor-pointer"
                       >
-                        Reject Receipt
+                        {item.type === 'withdraw' ? 'Reject Payout' : 'Reject Receipt'}
                       </button>
                       <button
                         onClick={() => handleApproveDeposit(item._id)}
                         className="flex-1 rounded-lg bg-green-500/20 border border-green-400/35 hover:bg-green-500/35 py-1.5 text-[10px] font-bold text-green-400 transition cursor-pointer"
                       >
-                        Approve Refill
+                        {item.type === 'withdraw' ? 'Approve Payout' : 'Approve Refill'}
                       </button>
                     </div>
                   </div>

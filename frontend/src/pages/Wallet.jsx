@@ -164,7 +164,7 @@ const WalletPage = () => {
       });
 
       syncWalletBalance(res.data.walletBalance);
-      setSuccessMsg(`Withdrawal of ₹${parsedAmount.toFixed(2)} processed to UPI ${upiId}!`);
+      setSuccessMsg(`Withdrawal request of ₹${parsedAmount.toFixed(2)} submitted successfully! It will be credited after host approval.`);
       setAmount('');
       setUpiId('');
       fetchHistory();
@@ -424,7 +424,7 @@ const WalletPage = () => {
         >
           <div
             ref={withdrawModalRef}
-            className="w-full max-w-md glass-panel rounded-2xl border border-gaming-blue/20 p-6 shadow-card"
+            className="w-full max-w-md glass-panel rounded-2xl border border-gaming-blue/20 p-6 shadow-card max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between border-b border-gaming-border pb-3">

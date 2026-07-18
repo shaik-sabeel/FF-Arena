@@ -120,7 +120,7 @@ router.post('/withdraw', auth, async (req, res) => {
   }
 
   if (!payoutDetails) {
-    return res.status(400).json({ msg: 'Please specify a valid UPI ID for checkout.' });
+    return res.status(400).json({ msg: 'Please specify a valid UPI ID for payout.' });
   }
 
   try {
@@ -138,116 +138,41 @@ router.post('/withdraw', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Insufficient wallet balance for withdrawal' });
     }
 
-    // Deduct and save balance temporarily
+    // Deduct amount immediately to hold it
     user.walletBalance -= numericAmount;
     await user.save();
 
-    let payoutId = `mock_payout_${Date.now()}`;
-    let payoutStatus = 'completed';
-    let description = `Withdrawn to UPI: ${payoutDetails}`;
-
-    const hasRazorpayX = process.env.RAZORPAY_KEY_ID && 
-                         process.env.RAZORPAY_KEY_SECRET && 
-                         process.env.RAZORPAYX_ACCOUNT_NUMBER && 
-                         process.env.RAZORPAYX_ACCOUNT_NUMBER.trim() !== '' && 
-                         !process.env.RAZORPAYX_ACCOUNT_NUMBER.includes('your_razorpayx_account_number_here') &&
-                         process.env.RAZORPAYX_ACCOUNT_NUMBER !== 'undefined';
-
-    // If RazorpayX is configured, perform real payout
-    if (hasRazorpayX) {
-      try {
-        const authHeader = 'Basic ' + Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
-        
-        // 1. Create Contact
-        console.log('[Payout] Registering RazorpayX contact for user:', user.email);
-        const contactRes = await makeHttpsPost('https://api.razorpay.com/v1/contacts', {
-          'Authorization': authHeader
-        }, {
-          name: user.username,
-          email: user.email,
-          type: 'customer',
-          reference_id: user._id.toString()
-        });
-        
-        if (!contactRes.ok) {
-          const errText = contactRes.text();
-          throw new Error(`RazorpayX Contact registration failed: ${errText}`);
-        }
-        
-        const contactData = contactRes.json();
-        const contactId = contactData.id;
-        console.log('[Payout] Created RazorpayX contact:', contactId);
-        
-        // 2. Create Fund Account (UPI)
-        console.log('[Payout] Linking RazorpayX fund account (UPI) for contact:', contactId);
-        const fundRes = await makeHttpsPost('https://api.razorpay.com/v1/fund_accounts', {
-          'Authorization': authHeader
-        }, {
-          contact_id: contactId,
-          account_type: 'vpa',
-          vpa: {
-            address: payoutDetails
-          }
-        });
-        
-        if (!fundRes.ok) {
-          const errText = fundRes.text();
-          throw new Error(`RazorpayX Fund Account linking failed: ${errText}`);
-        }
-        
-        const fundData = fundRes.json();
-        const fundAccountId = fundData.id;
-        console.log('[Payout] Linked fund account ID:', fundAccountId);
-        
-        // 3. Create Payout
-        console.log('[Payout] Initiating RazorpayX payout for amount (paise):', Math.round(numericAmount * 100));
-        const payoutRes = await makeHttpsPost('https://api.razorpay.com/v1/payouts', {
-          'Authorization': authHeader
-        }, {
-          account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER,
-          fund_account_id: fundAccountId,
-          amount: Math.round(numericAmount * 100), // convert to paise
-          currency: 'INR',
-          mode: 'UPI',
-          purpose: 'payout',
-          queue_if_low_balance: true,
-          narration: 'BL Battle Wallet Payout'
-        });
-        
-        if (!payoutRes.ok) {
-          const errText = payoutRes.text();
-          throw new Error(`RazorpayX Payout execution failed: ${errText}`);
-        }
-        
-        const payoutData = payoutRes.json();
-        payoutId = payoutData.id;
-        payoutStatus = payoutData.status; // e.g. processing, queued, processed
-        description = `Withdrawn to UPI: ${payoutDetails} (Ref: ${payoutId})`;
-        console.log('[Payout] Payout succeeded. Status:', payoutStatus, 'ID:', payoutId);
-        
-      } catch (payoutError) {
-        console.error('[Payout] Real-world RazorpayX payout transaction failed:', payoutError.message);
-        
-        // Rollback balance deduction
-        user.walletBalance += numericAmount;
-        await user.save();
-        
-        // Return clear error message to frontend
-        return res.status(400).json({ msg: `Transaction aborted: ${payoutError.message}` });
-      }
-    } else {
-      console.log('[Payout] RazorpayX credentials not fully configured. Performing mock transaction bypass.');
-    }
-
-    // Log the transaction
+    // Log the transaction as pending manual withdrawal
     const transaction = new Transaction({
       user: req.user.id,
       type: 'withdraw',
       amount: numericAmount,
-      status: payoutStatus === 'rejected' || payoutStatus === 'reversed' || payoutStatus === 'failed' ? 'failed' : 'completed',
-      description
+      status: 'pending',
+      description: `Manual UPI withdrawal request (UPI: ${payoutDetails})`
     });
     await transaction.save();
+
+    // Send Telegram Notification to Admin
+    try {
+      const axios = require('axios');
+      const botToken = '8836741801:AAFyaSg4679txpxZ69ji9lAwGEJICx0ZzgA';
+      const chatId = '6480716218';
+      const text = `💸 *New Wallet Withdrawal Request* \n\n` +
+                   `👤 *User:* @${user.username} (${user.freeFireName || 'No FF Name'})\n` +
+                   `📧 *Email:* ${user.email}\n` +
+                   `💰 *Amount:* ₹${numericAmount.toFixed(2)}\n` +
+                   `💳 *Payout UPI ID:* \`${payoutDetails.trim()}\`\n\n` +
+                   `⚠️ _Please transfer the amount manually via UPI QR and approve the request in the admin settings._`;
+
+      await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      });
+      console.log('Telegram withdrawal notification sent.');
+    } catch (telegramErr) {
+      console.error('Failed to send Telegram withdrawal notification:', telegramErr.message);
+    }
 
     res.json({
       walletBalance: user.walletBalance,
@@ -323,13 +248,13 @@ router.post('/manual-deposit', auth, async (req, res) => {
 });
 
 // @route   PUT api/wallet/transactions/:id/approve
-// @desc    Approve a pending manual deposit transaction (Admin only)
+// @desc    Approve a pending manual deposit/withdrawal transaction (Admin only)
 // @access  Private
 router.put('/transactions/:id/approve', auth, async (req, res) => {
   try {
     const userObj = await User.findById(req.user.id);
     if (userObj.role !== 'admin') {
-      return res.status(403).json({ msg: 'Access denied: Only Admins can approve wallet deposits.' });
+      return res.status(403).json({ msg: 'Access denied: Only Admins can approve wallet transactions.' });
     }
 
     const transaction = await Transaction.findById(req.params.id);
@@ -345,11 +270,13 @@ router.put('/transactions/:id/approve', auth, async (req, res) => {
     transaction.status = 'completed';
     await transaction.save();
 
-    // Credit user's wallet
-    const targetUser = await User.findById(transaction.user);
-    if (targetUser) {
-      targetUser.walletBalance += transaction.amount;
-      await targetUser.save();
+    // If it's a deposit, credit user's wallet (Withdrawal is already deducted and held, so no extra deduction)
+    if (transaction.type === 'deposit') {
+      const targetUser = await User.findById(transaction.user);
+      if (targetUser) {
+        targetUser.walletBalance += transaction.amount;
+        await targetUser.save();
+      }
     }
 
     res.json(transaction);
@@ -360,13 +287,13 @@ router.put('/transactions/:id/approve', auth, async (req, res) => {
 });
 
 // @route   PUT api/wallet/transactions/:id/reject
-// @desc    Reject a pending manual deposit transaction (Admin only)
+// @desc    Reject a pending manual deposit/withdrawal transaction (Admin only)
 // @access  Private
 router.put('/transactions/:id/reject', auth, async (req, res) => {
   try {
     const userObj = await User.findById(req.user.id);
     if (userObj.role !== 'admin') {
-      return res.status(403).json({ msg: 'Access denied: Only Admins can reject wallet deposits.' });
+      return res.status(403).json({ msg: 'Access denied: Only Admins can reject wallet transactions.' });
     }
 
     const transaction = await Transaction.findById(req.params.id);
@@ -383,6 +310,15 @@ router.put('/transactions/:id/reject', auth, async (req, res) => {
     transaction.description += ' (Rejected by Admin)';
     await transaction.save();
 
+    // If it's a withdrawal, refund the held funds back to the user's wallet
+    if (transaction.type === 'withdraw') {
+      const targetUser = await User.findById(transaction.user);
+      if (targetUser) {
+        targetUser.walletBalance += transaction.amount;
+        await targetUser.save();
+      }
+    }
+
     res.json(transaction);
   } catch (err) {
     console.error(err.message);
@@ -391,7 +327,7 @@ router.put('/transactions/:id/reject', auth, async (req, res) => {
 });
 
 // @route   GET api/wallet/pending-deposits
-// @desc    Get all pending manual deposit transactions (Admin only)
+// @desc    Get all pending manual deposit and withdrawal transactions (Admin only)
 // @access  Private
 router.get('/pending-deposits', auth, async (req, res) => {
   try {
@@ -400,7 +336,10 @@ router.get('/pending-deposits', auth, async (req, res) => {
       return res.status(403).json({ msg: 'Access denied.' });
     }
 
-    const pendingTransactions = await Transaction.find({ type: 'deposit', status: 'pending' })
+    const pendingTransactions = await Transaction.find({ 
+      type: { $in: ['deposit', 'withdraw'] },
+      status: 'pending' 
+    })
       .populate('user', 'username email freeFireName')
       .sort({ createdAt: -1 });
 
