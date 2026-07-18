@@ -18,7 +18,9 @@ import {
   Upload, 
   X,
   CreditCard,
-  User
+  User,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
 import gsap from 'gsap';
 
