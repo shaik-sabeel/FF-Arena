@@ -20,6 +20,7 @@ const WalletPage = () => {
   
   // Manual deposit UTR state
   const [utr, setUtr] = useState('');
+  const [selectedQr, setSelectedQr] = useState('qr_sabeel');
   
   // Visual feedbacks
   const [errorMsg, setErrorMsg] = useState('');
@@ -360,19 +361,51 @@ const WalletPage = () => {
             {errorMsg && <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 text-xs font-semibold text-red-400">{errorMsg}</div>}
             {successMsg && <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 p-2.5 text-xs font-semibold text-green-400 flex items-center"><CheckCircle size={14} className="mr-1"/>{successMsg}</div>}
 
-            <form onSubmit={handleDepositSubmit} className="space-y-4">
+             <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gaming-text">
+                  Choose UPI Payment QR Route
+                </label>
+                <select
+                  value={selectedQr}
+                  onChange={(e) => setSelectedQr(e.target.value)}
+                  className="w-full rounded-xl border border-gaming-border bg-gaming-dark/60 py-2 px-3 text-xs font-semibold text-white outline-none focus:border-gaming-accent"
+                >
+                  <option value="qr_sabeel" className="bg-gaming-dark">Mohammad Sabeel (Kotak Bank)</option>
+                  <option value="qr_durga" className="bg-gaming-dark">Durga Prasad (PhonePe)</option>
+                  <option value="qr_kowshik" className="bg-gaming-dark">Kowshik Reddy (PhonePe)</option>
+                </select>
+              </div>
+
               <div className="flex flex-col items-center space-y-2 rounded-xl bg-gaming-dark/60 border border-gaming-border p-4">
                 <p className="text-[10px] font-black uppercase text-gaming-accent tracking-wider">Scan QR to pay admin</p>
                 <img
-                  src="/qr_sabeel.png"
+                  src={
+                    selectedQr === 'qr_sabeel'
+                      ? '/qr_sabeel.png'
+                      : selectedQr === 'qr_durga'
+                      ? '/qr_durga.png'
+                      : '/qr_kowshik.png'
+                  }
                   alt="Admin UPI Payment QR Code"
                   className="w-64 h-auto object-contain rounded-lg border border-gaming-border bg-white p-1.5 shadow-md"
                 />
                 <div className="text-center">
                   <p className="text-[10px] font-extrabold text-white">
-                    Account Name: <span className="text-gaming-accent">SHAIK AENUGULA MOHAMMAD SABEEL</span>
+                    Account Name:{' '}
+                    <span className="text-gaming-accent">
+                      {selectedQr === 'qr_sabeel'
+                        ? 'SHAIK AENUGULA MOHAMMAD SABEEL'
+                        : selectedQr === 'qr_durga'
+                        ? 'PEDDA PUJARLA KAMMA DURGA PRASAD'
+                        : 'KANAGIRI KOWSHIK MANI DEEP REDDY'}
+                    </span>
                   </p>
-                  <p className="text-[9px] text-gaming-text mt-0.5">Pay via Kotak 811 or any UPI App</p>
+                  <p className="text-[9px] text-gaming-text mt-0.5">
+                    {selectedQr === 'qr_sabeel'
+                      ? 'Pay via Kotak 811 or any UPI App'
+                      : 'Pay via PhonePe, Google Pay, or Paytm UPI'}
+                  </p>
                 </div>
               </div>
 

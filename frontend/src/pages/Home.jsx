@@ -554,23 +554,7 @@ const Home = () => {
                 />
               </div>
 
-              {Number(formData.entryFee) > 0 && (
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text">
-                    Target UPI Payment QR
-                  </label>
-                  <select
-                    name="paymentQrOption"
-                    value={formData.paymentQrOption}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-gaming-border bg-gaming-card py-2.5 px-3 text-sm font-medium text-white outline-none focus:border-gaming-accent"
-                  >
-                    <option value="qr_durga">Durga Prasad (PhonePe)</option>
-                    <option value="qr_kowshik">Kowshik Reddy (PhonePe)</option>
-                    <option value="qr_sabeel">Mohammad Sabeel (Kotak Bank)</option>
-                  </select>
-                </div>
-              )}
+
 
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gaming-text">

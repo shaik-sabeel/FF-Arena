@@ -122,7 +122,7 @@ const TournamentSchema = new mongoose.Schema({
   }],
   paymentQrOption: {
     type: String,
-    enum: ['qr_durga', 'qr_kowshik'],
+    enum: ['qr_durga', 'qr_kowshik', 'qr_sabeel'],
     default: 'qr_durga'
   },
   pendingRegistrations: [{
