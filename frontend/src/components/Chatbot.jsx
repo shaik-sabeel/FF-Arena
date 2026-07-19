@@ -284,21 +284,21 @@ const Chatbot = () => {
       {/* Chat Window Box */}
       {isOpen && (
         <div 
-          className="fixed bottom-40 right-4 left-4 md:left-auto md:bottom-24 md:right-6 z-50 flex h-[480px] w-auto md:w-96 flex-col rounded-2xl glass-panel border border-gaming-accent/20 shadow-card animate-fade-in-up duration-300 overflow-hidden"
+          className="fixed bottom-40 right-4 left-4 md:left-auto md:bottom-24 md:right-6 z-50 flex h-[480px] w-auto md:w-96 flex-col rounded-2xl bg-white border border-slate-200 shadow-2xl animate-fade-in-up duration-300 overflow-hidden text-slate-800"
           id="chatbot-window"
         >
           {/* Header Bar */}
-          <div className="flex items-center justify-between border-b border-gaming-border bg-gaming-dark/60 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <div className="relative">
                 <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                 <div className="absolute -inset-0.5 -z-10 animate-ping rounded-full bg-emerald-500/50" />
               </div>
               <div>
-                <h4 className="font-gaming text-sm font-bold uppercase tracking-wider text-white glow-text-blue">
+                <h4 className="font-gaming text-sm font-bold uppercase tracking-wider text-white">
                   BL Battle Assistant
                 </h4>
-                <p className="text-[10px] text-gaming-text font-semibold uppercase">Tactical Support Bot</p>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase">Tactical Support Bot</p>
               </div>
             </div>
 
@@ -306,7 +306,7 @@ const Chatbot = () => {
               {/* Reset/Refresh */}
               <button 
                 onClick={handleReset}
-                className="text-gaming-text hover:text-white transition-colors"
+                className="text-slate-400 hover:text-white transition-colors"
                 title="Reset Chat"
               >
                 <RefreshCw size={14} />
@@ -315,7 +315,7 @@ const Chatbot = () => {
               {/* Sound Toggle */}
               <button
                 onClick={() => setIsMuted(!isMuted)}
-                className="text-gaming-text hover:text-white transition-colors"
+                className="text-slate-400 hover:text-white transition-colors"
                 title={isMuted ? "Unmute Bot" : "Mute Bot"}
               >
                 {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
@@ -327,7 +327,7 @@ const Chatbot = () => {
                   setIsOpen(false);
                   playSynthSound();
                 }}
-                className="text-gaming-text hover:text-white transition-colors ml-1"
+                className="text-slate-400 hover:text-white transition-colors ml-1"
               >
                 <X size={16} />
               </button>
@@ -335,7 +335,7 @@ const Chatbot = () => {
           </div>
 
           {/* Messages Body */}
-          <div className="flex-grow overflow-y-auto p-4 space-y-4">
+          <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-50">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -344,20 +344,20 @@ const Chatbot = () => {
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs md:text-sm font-medium leading-relaxed shadow-sm ${
                     msg.sender === 'user'
-                      ? 'bg-gaming-accent/10 text-gaming-accent border border-gaming-accent/30 rounded-tr-none'
-                      : 'bg-gaming-card/85 text-white border border-gaming-border rounded-tl-none'
+                      ? 'bg-blue-600 text-white rounded-tr-none'
+                      : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                   }`}
                 >
                   {/* Message Title */}
                   {msg.title && (
-                    <div className="mb-1 font-bold text-gaming-accent uppercase tracking-wider text-[11px] flex items-center gap-1.5 border-b border-gaming-border pb-1">
+                    <div className="mb-1 font-bold text-blue-600 uppercase tracking-wider text-[11px] flex items-center gap-1.5 border-b border-slate-100 pb-1">
                       {msg.title}
                     </div>
                   )}
                   {/* Message Text with simple formatting */}
-                  <div className="whitespace-pre-line text-gaming-light">
+                  <div className={msg.sender === 'user' ? 'text-white' : 'text-slate-700'}>
                     {msg.text.split('**').map((chunk, index) => 
-                      index % 2 === 1 ? <strong key={index} className="text-white font-bold">{chunk}</strong> : chunk
+                      index % 2 === 1 ? <strong key={index} className={msg.sender === 'user' ? 'text-white font-bold' : 'text-slate-900 font-bold'}>{chunk}</strong> : chunk
                     )}
                   </div>
 
@@ -368,7 +368,7 @@ const Chatbot = () => {
                         navigate(msg.navigation.path);
                         setIsOpen(false);
                       }}
-                      className="mt-3.5 flex w-full items-center justify-center gap-1 rounded-lg bg-gaming-accent py-1.5 text-xs font-bold text-black shadow-neon transition-all hover:shadow-neon-hover"
+                      className="mt-3.5 flex w-full items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow hover:bg-blue-700 transition"
                     >
                       {msg.navigation.label} <ChevronRight size={14} />
                     </button>
@@ -380,30 +380,30 @@ const Chatbot = () => {
                   <div className="mt-4 grid grid-cols-2 gap-2 w-full">
                     <button
                       onClick={() => handleQuickOptionClick('tournaments', '🏆 Room & Match Info')}
-                      className="flex items-center gap-2 rounded-xl border border-gaming-border bg-gaming-card p-2.5 text-left text-[11px] font-semibold text-gaming-text hover:border-gaming-accent hover:text-white transition-all hover:-translate-y-0.5 duration-200"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-left text-[11px] font-semibold text-slate-700 hover:border-blue-500 hover:bg-slate-50 transition-all shadow-sm"
                     >
-                      <Key size={14} className="text-gaming-accent" />
+                      <Key size={14} className="text-blue-600" />
                       <span>Room & Matches</span>
                     </button>
                     <button
                       onClick={() => handleQuickOptionClick('wallet', '💳 Deposit Details')}
-                      className="flex items-center gap-2 rounded-xl border border-gaming-border bg-gaming-card p-2.5 text-left text-[11px] font-semibold text-gaming-text hover:border-gaming-accent hover:text-white transition-all hover:-translate-y-0.5 duration-200"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-left text-[11px] font-semibold text-slate-700 hover:border-blue-500 hover:bg-slate-50 transition-all shadow-sm"
                     >
-                      <Wallet size={14} className="text-gaming-accent" />
+                      <Wallet size={14} className="text-blue-600" />
                       <span>Deposits & UPI</span>
                     </button>
                     <button
                       onClick={() => handleQuickOptionClick('kills', '🎖️ Per-Kill Payouts')}
-                      className="flex items-center gap-2 rounded-xl border border-gaming-border bg-gaming-card p-2.5 text-left text-[11px] font-semibold text-gaming-text hover:border-gaming-accent hover:text-white transition-all hover:-translate-y-0.5 duration-200"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-left text-[11px] font-semibold text-slate-700 hover:border-blue-500 hover:bg-slate-50 transition-all shadow-sm"
                     >
-                      <Trophy size={14} className="text-gaming-accent" />
+                      <Trophy size={14} className="text-blue-600" />
                       <span>Kill Rewards</span>
                     </button>
                     <button
                       onClick={() => handleQuickOptionClick('otp', '✉️ OTP & Settings')}
-                      className="flex items-center gap-2 rounded-xl border border-gaming-border bg-gaming-card p-2.5 text-left text-[11px] font-semibold text-gaming-text hover:border-gaming-accent hover:text-white transition-all hover:-translate-y-0.5 duration-200"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-left text-[11px] font-semibold text-slate-700 hover:border-blue-500 hover:bg-slate-50 transition-all shadow-sm"
                     >
-                      <HelpCircle size={14} className="text-gaming-accent" />
+                      <HelpCircle size={14} className="text-blue-600" />
                       <span>OTP & Email</span>
                     </button>
                   </div>
@@ -414,10 +414,10 @@ const Chatbot = () => {
             {/* Dynamic typing dots */}
             {isTyping && (
               <div className="flex items-start">
-                <div className="bg-gaming-card/85 text-gaming-text border border-gaming-border rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gaming-accent [animation-delay:-0.3s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gaming-accent [animation-delay:-0.15s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gaming-accent" />
+                <div className="bg-white text-slate-400 border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600" />
                 </div>
               </div>
             )}
@@ -425,28 +425,28 @@ const Chatbot = () => {
           </div>
 
           {/* Preset Helper Tags / Chips just above Input bar */}
-          <div className="px-4 py-1.5 border-t border-gaming-border bg-gaming-dark/40 flex gap-2 overflow-x-auto scrollbar-none whitespace-nowrap">
+          <div className="px-4 py-1.5 border-t border-slate-200 bg-slate-50 flex gap-2 overflow-x-auto scrollbar-none whitespace-nowrap">
             <button 
               onClick={() => handleSendMessage("How do I deposit money?")}
-              className="px-2.5 py-1 rounded-full border border-gaming-border bg-gaming-card/50 text-[10px] text-gaming-text hover:border-gaming-accent hover:text-white transition-all"
+              className="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-[10px] text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all"
             >
               Add Money
             </button>
             <button 
               onClick={() => handleSendMessage("How to withdraw winnings?")}
-              className="px-2.5 py-1 rounded-full border border-gaming-border bg-gaming-card/50 text-[10px] text-gaming-text hover:border-gaming-accent hover:text-white transition-all"
+              className="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-[10px] text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all"
             >
               Withdraw
             </button>
             <button 
               onClick={() => handleSendMessage("Where is custom room credentials?")}
-              className="px-2.5 py-1 rounded-full border border-gaming-border bg-gaming-card/50 text-[10px] text-gaming-text hover:border-gaming-accent hover:text-white transition-all"
+              className="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-[10px] text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all"
             >
               Room ID/Password
             </button>
             <button 
               onClick={() => handleSendMessage("Not receiving welcome email or OTP code")}
-              className="px-2.5 py-1 rounded-full border border-gaming-border bg-gaming-card/50 text-[10px] text-gaming-text hover:border-gaming-accent hover:text-white transition-all"
+              className="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-[10px] text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-all"
             >
               No OTP
             </button>
@@ -458,19 +458,19 @@ const Chatbot = () => {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="flex items-center gap-2 border-t border-gaming-border bg-gaming-dark/80 px-4 py-3"
+            className="flex items-center gap-2 border-t border-slate-200 bg-white px-4 py-3"
           >
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Ask anything tactical..."
-              className="flex-grow rounded-xl border border-gaming-border bg-gaming-card px-3 py-2 text-xs md:text-sm text-white placeholder-gaming-text/60 focus:border-gaming-accent focus:outline-none focus:ring-0"
+              className="flex-grow rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs md:text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-0"
               id="chatbot-input"
             />
             <button
               type="submit"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gaming-accent text-black transition-all hover:scale-105 active:scale-95 shadow-neon"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all hover:scale-105 active:scale-95 shadow"
               id="chatbot-send-btn"
             >
               <Send className="h-4 w-4" />
